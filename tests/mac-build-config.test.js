@@ -92,6 +92,14 @@ test('la firma ad-hoc se pide con las opciones correctas y un certificado real s
   }
 });
 
+test('el .dmg se construye en un Mac Intel (HFS+, legible en macOS 10.13/10.14) y se comprueba su formato', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
+  const job = workflow.slice(workflow.indexOf('build-mac:'), workflow.indexOf('verify-mac:'));
+  assert.match(job, /runs-on:\s*macos-\d+-intel/, 'en Apple Silicon electron-builder fabrica un .dmg APFS');
+  assert.doesNotMatch(job, /runs-on:\s*macos-latest/);
+  assert.match(workflow, /File System Personality[\s\S]*HFS/, 'el flujo comprueba que el volumen es HFS+');
+});
+
 test('los scripts de empaquetado funcionan en un servidor de CI: sin enlaces duros (Mac) y sin publicar solo (Mac y Windows)', () => {
   // En CI electron-builder usa enlaces duros y la copia de heic-worker.js / heic-color.js (desempaquetados) choca con EEXIST;
   // y por estar en CI intenta publicar y exige GH_TOKEN. Los dos fallos salieron en GitHub, no en local.

@@ -28,7 +28,10 @@ jobs:
   # ------------------------------------------------------------------ 1. El instalador de Mac
   build-mac:
     name: Instalador de Mac (universal)
-    runs-on: macos-latest # Apple Silicon; el .dmg lleva tambien la parte Intel
+    # Se construye en un Mac INTEL a proposito: en Apple Silicon, electron-builder fabrica el .dmg en formato APFS (dice que
+    # hdiutil ya no ofrece HFS+), y un APFS creado por un macOS moderno es el formato mas arriesgado de abrir en macOS 10.13/10.14.
+    # En Intel usa HFS+, que lee cualquier macOS. El .dmg sale igualmente universal (Intel + Apple Silicon).
+    runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -113,6 +116,9 @@ jobs:
           DMG=$(ls installer/*.dmg)
           hdiutil attach "$DMG" -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg"
           ls -la "$RUNNER_TEMP/dmg"
+          # El volumen del .dmg debe ser HFS+ (lo lee cualquier macOS, incluidos 10.13 y 10.14), no APFS.
+          diskutil info "$RUNNER_TEMP/dmg" | grep -E "File System Personality|Type \(Bundle\)" || true
+          diskutil info "$RUNNER_TEMP/dmg" | grep "File System Personality" | grep -q "HFS" || { echo "El .dmg no es HFS+"; exit 1; }
           mkdir -p "$RUNNER_TEMP/Applications"
           ditto "$RUNNER_TEMP/dmg/Compacta.app" "$RUNNER_TEMP/Applications/Compacta.app"
           hdiutil detach "$RUNNER_TEMP/dmg"
