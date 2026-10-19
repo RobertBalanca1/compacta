@@ -1,0 +1,54 @@
+name: Probar en Mac (solo las pruebas, rapido)
+
+# Pasa las pruebas del proyecto en un Mac real (Apple Silicon e Intel) sin construir el instalador (~5 minutos).
+# Si alguna falla, deja el detalle en la rama «registro-pruebas-<sistema>» para poder leerlo.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pruebas:
+    name: Pruebas en ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: arm64
+          - os: macos-15-intel
+            label: intel
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - name: Pasar las pruebas
+        shell: bash
+        run: |
+          set +e
+          node --test tests/*.test.js > test.log 2>&1
+          echo "salida=$?" >> test.log
+          tail -n 12 test.log
+          exit 0
+
+      - name: Guardar el detalle de lo que falle en una rama
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci"
+          { echo "== $(sw_vers -productVersion) $(uname -m)"; tail -n 14 test.log; echo; echo "== PRUEBAS QUE FALLAN"; grep -n -A 28 "^not ok" test.log | head -400; } > "$RUNNER_TEMP/ci/registro.txt"
+          cd "$RUNNER_TEMP/ci"
+          git init -q
+          git checkout -q -b "registro-pruebas-${{ matrix.label }}"
+          git add .
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "registro de pruebas ${{ matrix.label }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "registro-pruebas-${{ matrix.label }}" || true
