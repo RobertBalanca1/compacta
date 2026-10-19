@@ -267,8 +267,8 @@ Lo que se hizo y lo que queda. Repetir `npm run audit` antes de cada versión.
 
 Ya no está aplazado: se implementó y se verificó todo lo que se puede verificar sin un Mac (ver 7.23). Lo que queda no es código:
 
-- [ ] **Ejecutar el flujo de GitHub** (`.github/workflows/build.yml`) por primera vez y revisar su resultado: construye el `.dmg` y lo prueba en un
-      Mac Intel y uno Apple Silicon REALES. Si algo falla ahí, es información real y hay que corregirlo.
+- [x] **Flujo de GitHub ejecutado (v1.2.0): en verde.** Construye el `.dmg` (en un Mac Intel, para que sea HFS+) y lo prueba en un Mac Intel y uno Apple Silicon REALES. Salieron 4 fallos
+      que en Linux no se veían (publicación automática, enlaces duros, APFS, muestras que el ffmpeg de Apple Silicon no sabe fabricar); todos corregidos: 7.23.
 - [ ] **Probar el `.dmg` a mano en un Mac real** siguiendo `PRUEBAS-EN-MAC.md` (sobre todo: aspecto de la ventana con los botones, menú,
       arrastrar desde el Finder, notificaciones, y las versiones viejas de macOS: 10.13/10.14/10.15, que GitHub no ofrece).
 - [ ] **Apple Silicon con macOS 11, vídeo y audio por Rosetta**: implementado y probado la lógica (cabeceras Mach-O reales, argumentos), pero

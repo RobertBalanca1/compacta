@@ -1682,6 +1682,18 @@ y otro ffmpeg: no se hizo y no se recomienda.
 **Resultado de las pruebas de 1.2.0:** 454 unitarias (443 pasan, 11 omitidas por no haber `rar`, 0 fallan) con Node 22 Y con el Node 18.16 de Electron 26; 47/47 de interfaz con Electron 32 y con Electron 26;
 17/17 de idiomas; paquete real de Linux; fusión universal de Mac sin errores; verificador del paquete 7/7.
 
+**Resultado REAL en GitHub (repositorio `RobertBalanca1/compacta`, etiqueta `v1.2.0`).** Construido y probado en macOS reales, no simulado: `.dmg` universal + `.exe`; el `.dmg`
+se abrió y se probó en un **Mac Apple Silicon (macOS 26.6.2) y en un Mac Intel**: las dos arquitecturas, macOS mínimo 10.13.0, firma ad-hoc válida, formato HFS+, compresión real
+de foto, HEIC (fabricado con `sips`), vídeo y audio con lo que lleva dentro la app, ventana real cargada y `npm test` completo. **Cuatro fallos que SOLO aparecieron en GitHub** (y su arreglo):
+1. Windows: electron-builder detecta CI e intenta publicar → exige `GH_TOKEN`. Arreglo: `--publish never` en `dist:win` y `dist:mac`.
+2. Mac: `EEXIST: file already exists, link …heic-worker.js` — en CI electron-builder usa enlaces duros y esos dos archivos (desempaquetados del `.asar`) se procesan dos veces. En local no se ve (no usa
+   enlaces duros fuera de CI; se reproduce con `USE_HARD_LINKS=true CI=true`). Arreglo: `USE_HARD_LINKS=false` en `dist:mac`.
+3. Mac: en un servidor Apple Silicon electron-builder fabrica el `.dmg` en **APFS**, formato arriesgado en macOS 10.13/10.14. Arreglo: el `.dmg` se construye en `macos-15-intel` (HFS+) y el flujo
+   comprueba con `diskutil info` que el volumen es HFS+. (Sigue siendo universal.)
+4. `npm test` en Apple Silicon: 2 pruebas fallaban porque el ffmpeg de Apple Silicon no trae el codificador `libopencore_amrnb` ni el muxer `yuv4mpegpipe` y no puede FABRICAR la muestra `.amr` / `.y4m`;
+   ahora se omiten en ese caso (si el fallo es otro, siguen fallando). No dice nada de si LEE esos formatos: no comprobado en Apple Silicon.
+Cómo se lee un fallo desde aquí: los registros de GitHub no se pueden descargar desde el entorno de desarrollo; `.github/workflows/test-mac.yml` (manual) deja el detalle de las pruebas en la rama `registro-pruebas-<arm64|intel>`.
+
 **Cómo se verificó (repetible desde Linux).**
 - `npm run predist:mac` (las dos variantes de `sharp` y los dos ffmpeg: la segunda instalación con `--cpu` NO borra la primera) → `npx electron-builder --mac dir --universal -c.electronVersion=26.6.10` construye los dos
   paquetes y se detiene en la fusión (`@electron/universal` solo corre en darwin). La fusión se ejecuta a mano con un `lipo` falso-pero-real (`apt install llvm`; `ln -s /usr/bin/llvm-lipo-18 /usr/local/bin/lipo`) y
