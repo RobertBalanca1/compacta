@@ -42,7 +42,10 @@ jobs:
         run: npm ci
 
       - name: Compilar el instalador universal (Intel + Apple Silicon)
-        run: npm run dist:mac
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run dist:mac 2>&1 | tee build.log
 
       - name: Comprobar que sale UN solo .dmg
         run: |
@@ -57,6 +60,19 @@ jobs:
           name: Compacta-Mac
           path: dist/*.dmg
           if-no-files-found: error
+
+      - name: Guardar el registro en una rama (para poder leerlo si algo falla)
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci"
+          tail -n 400 build.log > "$RUNNER_TEMP/ci/registro.txt" 2>/dev/null || echo "sin registro" > "$RUNNER_TEMP/ci/registro.txt"
+          cd "$RUNNER_TEMP/ci"
+          git init -q
+          git checkout -q -b "registro-${{ github.job }}"
+          git add .
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "registro de ${{ github.job }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "registro-${{ github.job }}" || true
 
   # ------------------------------------------------------------------ 2. Probar el .dmg en Macs reales
   verify-mac:
@@ -177,7 +193,10 @@ jobs:
         run: npm ci
 
       - name: Compilar el instalador de Windows
-        run: npm run dist:win
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run dist:win 2>&1 | tee build.log
 
       - name: Guardar el instalador
         uses: actions/upload-artifact@v4
@@ -185,6 +204,19 @@ jobs:
           name: Compacta-Windows
           path: dist/*.exe
           if-no-files-found: error
+
+      - name: Guardar el registro en una rama (para poder leerlo si algo falla)
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci"
+          tail -n 400 build.log > "$RUNNER_TEMP/ci/registro.txt" 2>/dev/null || echo "sin registro" > "$RUNNER_TEMP/ci/registro.txt"
+          cd "$RUNNER_TEMP/ci"
+          git init -q
+          git checkout -q -b "registro-${{ github.job }}"
+          git add .
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "registro de ${{ github.job }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "registro-${{ github.job }}" || true
 
   # ------------------------------------------------------------------ 4. Publicar (solo con etiqueta v*)
   release:
