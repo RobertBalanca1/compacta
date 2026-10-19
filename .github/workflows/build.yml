@@ -1,0 +1,209 @@
+name: Construir instaladores
+
+# Que hace este flujo (todo en la nube de GitHub, gratis; no hace falta un Mac):
+#   1. Construye UN solo instalador de Mac (Compacta-X.Y.Z-Mac.dmg) que sirve para Mac Intel y Apple Silicon, desde
+#      macOS 10.13 (con Electron 26: ver DOCUMENTACION-PROYECTO.md 7.23).
+#   2. Lo PRUEBA en Macs reales de las dos arquitecturas: abre el instalador, comprueba que lleva las dos, que la firma es
+#      valida, que la ventana arranca, y comprime de verdad una foto, un video y un audio con lo que lleva dentro.
+#   3. Pasa las pruebas del proyecto en esos mismos Macs reales.
+#   4. Construye el instalador de Windows.
+#   5. Si lo lanzas con una etiqueta (v1.2.0...), lo publica en «Releases» con enlace de descarga.
+#
+# Como se lanza a mano: pestaña «Actions» > «Construir instaladores» > «Run workflow». El resultado queda en «Artifacts».
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # solo para publicar el Release cuando se lanza con una etiqueta
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------ 1. El instalador de Mac
+  build-mac:
+    name: Instalador de Mac (universal)
+    runs-on: macos-latest # Apple Silicon; el .dmg lleva tambien la parte Intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar el instalador universal (Intel + Apple Silicon)
+        run: npm run dist:mac
+
+      - name: Comprobar que sale UN solo .dmg
+        run: |
+          ls -la dist
+          count=$(ls dist/*.dmg | wc -l | tr -d ' ')
+          if [ "$count" != "1" ]; then echo "Se esperaba exactamente un .dmg y hay $count"; exit 1; fi
+          ls dist/*.zip 2>/dev/null && { echo "No debe haber .zip de Mac"; exit 1; } || true
+
+      - name: Guardar el instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: Compacta-Mac
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------ 2. Probar el .dmg en Macs reales
+  verify-mac:
+    name: Probar el .dmg en ${{ matrix.label }}
+    needs: build-mac
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: Mac Apple Silicon
+          - os: macos-15-intel
+            label: Mac Intel
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Compacta-Mac
+          path: installer
+
+      - name: Datos del Mac de prueba
+        run: |
+          sw_vers
+          uname -m
+          sysctl -n machdep.cpu.brand_string || true
+
+      - name: Abrir el .dmg y copiar la app (como haria una persona)
+        run: |
+          set -euo pipefail
+          DMG=$(ls installer/*.dmg)
+          hdiutil attach "$DMG" -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg"
+          ls -la "$RUNNER_TEMP/dmg"
+          mkdir -p "$RUNNER_TEMP/Applications"
+          ditto "$RUNNER_TEMP/dmg/Compacta.app" "$RUNNER_TEMP/Applications/Compacta.app"
+          hdiutil detach "$RUNNER_TEMP/dmg"
+          echo "APP=$RUNNER_TEMP/Applications/Compacta.app" >> "$GITHUB_ENV"
+
+      - name: Un solo programa para las dos arquitecturas, y macOS minimo
+        run: |
+          set -euo pipefail
+          echo "Ejecutable:   $(lipo -archs "$APP/Contents/MacOS/Compacta")"
+          echo "ffmpeg:       $(lipo -archs "$APP/Contents/Resources/ffmpeg/ffmpeg")"
+          for f in "$APP/Contents/MacOS/Compacta" "$APP/Contents/Resources/ffmpeg/ffmpeg"; do
+            archs=$(lipo -archs "$f")
+            case "$archs" in *x86_64*) ;; *) echo "Falta la parte Intel en $f"; exit 1;; esac
+            case "$archs" in *arm64*) ;; *) echo "Falta la parte Apple Silicon en $f"; exit 1;; esac
+          done
+          min=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")
+          echo "macOS minimo declarado: $min"
+          [ "$min" = "10.13.0" ] || { echo "Se esperaba 10.13.0"; exit 1; }
+          ls "$APP/Contents/Resources/app.asar.unpacked/node_modules/@img"
+
+      - name: Firma (sin ella Apple Silicon diria que la app esta «dañada»)
+        run: |
+          set -euo pipefail
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv "$APP" 2>&1 | grep -E "Signature|Identifier|Format" || true
+          codesign -dv "$APP" 2>&1 | grep -q "Signature=adhoc" || { echo "Se esperaba firma ad-hoc"; exit 1; }
+          # Esperado: Gatekeeper la rechaza por no estar notarizada (hay que abrirla una vez con «Abrir igualmente»).
+          spctl --assess --type execute --verbose=2 "$APP" || echo "(esperado: sin notarizar)"
+
+      - name: Comprimir de verdad con lo que lleva dentro la app (foto, HEIC, video, audio)
+        run: |
+          set -euo pipefail
+          ELECTRON_RUN_AS_NODE=1 "$APP/Contents/MacOS/Compacta" scripts/verify-packaged-engine.js "$APP/Contents/Resources"
+
+      - name: Abrir la app de verdad y comprobar que la ventana carga
+        run: |
+          set -euo pipefail
+          export COMPACTA_DEBUG=1 COMPACTA_SCREENSHOT="$RUNNER_TEMP/ventana.png"
+          "$APP/Contents/MacOS/Compacta" > "$RUNNER_TEMP/app.log" 2>&1 &
+          PID=$!
+          for i in $(seq 1 90); do
+            if grep -q "screenshot saved" "$RUNNER_TEMP/app.log" 2>/dev/null; then break; fi
+            if ! kill -0 $PID 2>/dev/null; then break; fi
+            sleep 1
+          done
+          kill $PID 2>/dev/null || true
+          cat "$RUNNER_TEMP/app.log"
+          grep -q "did-finish-load" "$RUNNER_TEMP/app.log" || { echo "La ventana no cargo"; exit 1; }
+          grep -q "screenshot saved" "$RUNNER_TEMP/app.log" || { echo "No se pudo capturar la ventana"; exit 1; }
+          if grep -qi "DEBUG-renderer-crash\|DEBUG-did-fail-load\|uncaughtException" "$RUNNER_TEMP/app.log"; then echo "Hubo errores al abrir"; exit 1; fi
+
+      - name: Guardar la captura de la ventana (para mirarla)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ventana-${{ matrix.os }}
+          path: ${{ runner.temp }}/ventana.png
+          if-no-files-found: ignore
+
+      - name: Pruebas del proyecto en este Mac
+        run: |
+          npm ci
+          npm test
+
+  # ------------------------------------------------------------------ 3. El instalador de Windows
+  build-win:
+    name: Instalador de Windows
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar el instalador de Windows
+        run: npm run dist:win
+
+      - name: Guardar el instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: Compacta-Windows
+          path: dist/*.exe
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------ 4. Publicar (solo con etiqueta v*)
+  release:
+    name: Publicar en Releases
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [verify-mac, build-win]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+          pattern: Compacta-*
+
+      - run: ls -la release
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.dmg
+            release/*.exe
+          generate_release_notes: true

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' compacta-file: data:; style-src 'self' 'unsafe-inline'; font-src 'self';" />
+  <title>Compacta</title>
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="brand__mark" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="17" class="brand__ring" />
+          <circle cx="20" cy="20" r="6" class="brand__core" />
+        </svg>
+        <div class="brand__text">
+          <h1>Compacta</h1>
+          <p data-i18n="header.subtitle">Compresión de fotos, vídeos y audios por lotes, en tu máquina</p>
+        </div>
+      </div>
+      <button id="settingsBtn" class="icon-btn" title="Ajustes" aria-label="Ajustes" data-i18n-title="settings.open" data-i18n-aria="settings.open">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M19.4 13a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V19a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 13a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 7a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 008.9 2.68 1.65 1.65 0 0010 1.65V1.5a2 2 0 114 0v.09c0 .67.39 1.28 1 1.55.6.28 1.31.17 1.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06c-.5.5-.61 1.21-.33 1.82.27.61.88 1 1.55 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+
+    <main class="content">
+      <div id="cloudSyncBanner" class="cloud-banner hidden" role="alert">
+        <span class="cloud-banner__text" data-i18n="cloud.text">Tu carpeta «Documentos» parece estar sincronizada con OneDrive/iCloud. Si Compacta vuelve a comprimir archivos ya hechos al abrirla, puede ser por eso: ten esa carpeta libre de «archivos bajo demanda», o excluye la carpeta «Compacta» de la sincronización.</span>
+        <button id="dismissCloudBannerBtn" class="cloud-banner__close" aria-label="Cerrar aviso" data-i18n-aria="notice.close">×</button>
+      </div>
+
+      <!-- Aviso persistente de lo omitido por repetido (un aviso de 5 s se perdia y parecia que "no hacia nada"). -->
+      <div id="duplicatesNotice" class="cloud-banner duplicates-notice hidden" role="status">
+        <span id="duplicatesNoticeText" class="cloud-banner__text"></span>
+        <button id="importSkippedBtn" class="btn btn--ghost btn--small hidden" type="button" title="Vuelve a procesar lo que se omitió por repetido, sin cambiar el ajuste" data-i18n-title="dup.processAnywayTitle" data-i18n="dup.processAnyway">Procesar de todos modos</button>
+        <button id="dismissDuplicatesBtn" class="cloud-banner__close" type="button" aria-label="Cerrar aviso" data-i18n-aria="notice.close">×</button>
+      </div>
+
+      <section id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Arrastra fotos, vídeos, audios, carpetas o archivos comprimidos aquí, o elige archivos" data-i18n-aria="dropzone.aria">
+        <svg id="apertureRing" class="dropzone__ring" viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r="46" class="dropzone__hub" />
+        </svg>
+        <div class="dropzone__text">
+          <p id="dropzoneTitle" class="dropzone__title" data-i18n="dropzone.title">Arrastra tus fotos, vídeos y audios aquí</p>
+          <p id="dropzoneSubtitle" class="dropzone__subtitle"></p>
+        </div>
+        <div class="dropzone__actions">
+          <button id="chooseFilesBtn" class="btn btn--primary" data-i18n="dropzone.chooseFiles">Elegir archivos</button>
+          <button id="chooseFolderBtn" class="btn btn--ghost" title="Puedes elegir varias carpetas a la vez (Ctrl/Cmd + clic)" data-i18n-title="dropzone.chooseFolderTitle" data-i18n="dropzone.chooseFolder">Elegir carpetas</button>
+          <button id="chooseArchiveBtn" class="btn btn--ghost" title="ZIP, RAR, 7z, TAR, GZ, BZ2, XZ… Se descomprime solo y se comprimen las fotos, vídeos y audios que lleve dentro" data-i18n-title="dropzone.chooseArchiveTitle" data-i18n="dropzone.chooseArchive">Elegir comprimido</button>
+        </div>
+      </section>
+
+      <section class="queue-section">
+        <div class="queue-section__header">
+          <h2 data-i18n="queue.title">Cola de procesamiento</h2>
+          <div class="queue-section__stats">
+            <span id="savedTotal" class="stat-pill stat-pill--success">0 KB ahorrados</span>
+            <button id="pauseResumeBtn" class="btn btn--ghost btn--small hidden">Detener</button>
+            <button id="cancelPendingBtn" class="btn btn--danger btn--small hidden" title="Descarta lo que quedó en espera. Las ya terminadas no se tocan." data-i18n-title="queue.cancelPendingTitle" data-i18n="queue.cancelPending">Eliminar pendientes</button>
+            <button id="clearFinishedBtn" class="link-btn" data-i18n="queue.clearFinished">Limpiar completados</button>
+          </div>
+        </div>
+        <div id="globalProgress" class="global-progress hidden" role="progressbar" aria-label="Progreso del lote" data-i18n-aria="queue.progressAria" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="global-progress__track"><div id="globalProgressFill" class="global-progress__fill"></div></div>
+          <span id="globalProgressText" class="global-progress__text"></span>
+        </div>
+        <ul id="queueList" class="queue-list"></ul>
+        <p id="emptyState" class="empty-state" data-i18n="queue.empty">Aún no hay nada en la cola. Suelta fotos, vídeos o audios arriba para empezar.</p>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span id="folderHint" class="statusbar__hint"><span data-i18n="footer.savedIn">Lo procesado se guarda en</span> <strong id="folderHintPath" dir="auto">Documentos/Compacta/output</strong></span>
+      <button id="openOutputBtn" class="btn btn--ghost btn--small" data-i18n="footer.open">Abrir carpeta de salida</button>
+    </footer>
+  </div>
+
+  <div id="settingsOverlay" class="overlay hidden">
+    <div class="settings-panel" role="dialog" aria-label="Ajustes de compresión" data-i18n-aria="settings.title">
+      <div class="settings-panel__header">
+        <h2 data-i18n="settings.title">Ajustes de compresión</h2>
+        <button id="closeSettingsBtn" class="icon-btn" aria-label="Cerrar" data-i18n-aria="settings.close">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.language.label">Idioma</span>
+          <span class="setting-row__hint" data-i18n="settings.language.hint">Idioma de la aplicación. «Automático» usa el del sistema. Se cambia al instante, sin reiniciar.</span>
+        </div>
+        <div class="setting-row__control">
+          <select id="languageSelect" class="profile-select" aria-label="Idioma" data-i18n-aria="settings.language.label"></select>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.profile.label">Perfil</span>
+          <span class="setting-row__hint" data-i18n="settings.profile.hint">Guarda distintas combinaciones de ajustes (por ejemplo "Para imprimir" y "Para proyector") y cambia entre ellas</span>
+        </div>
+        <div class="setting-row__control profile-row__control">
+          <select id="profileSelect" class="profile-select"></select>
+          <button id="newProfileBtn" class="icon-btn" title="Crear perfil nuevo con los ajustes actuales" aria-label="Crear perfil nuevo con los ajustes actuales" data-i18n-title="settings.profile.new" data-i18n-aria="settings.profile.new">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <button id="renameProfileBtn" class="icon-btn" title="Renombrar perfil" aria-label="Renombrar perfil" data-i18n-title="settings.profile.rename" data-i18n-aria="settings.profile.rename">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 20h4L18.5 9.5a2 2 0 000-2.8l-1.2-1.2a2 2 0 00-2.8 0L4 15.5V20z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="none"/></svg>
+          </button>
+          <button id="deleteProfileBtn" class="icon-btn" title="Eliminar perfil" aria-label="Eliminar perfil" data-i18n-title="settings.profile.delete" data-i18n-aria="settings.profile.delete">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M5 7h14M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0v13a1 1 0 001 1h6a1 1 0 001-1V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.quality.label">Calidad (fotos, vídeos y audios)</span>
+          <span class="setting-row__hint" data-i18n="settings.quality.hint">Más alta = más fiel al original, menos ahorro de espacio. En vídeo y audio, 90 es indistinguible del original a simple vista y de oído.</span>
+        </div>
+        <div class="setting-row__control">
+          <input type="range" id="qualitySlider" min="60" max="100" step="1" />
+          <span id="qualityValue" class="setting-row__value">90</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.aggressive.label">Modo agresivo</span>
+          <span class="setting-row__hint" data-i18n="settings.aggressive.hint">Ahorra más: reduce colores en PNG y baja la calidad en JPG, WebP, AVIF, vídeo y audio. Puede notarse levemente en degradados suaves.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="aggressiveToggle" />
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.maxCompression.label">Compresión máxima (más lenta)</span>
+          <span class="setting-row__hint" data-i18n="settings.maxCompression.hint">Usa codificadores más exigentes: en JPG ahorra alrededor de un 7% más pero tarda unas 10 veces más por foto; en vídeo comprime algo más y tarda bastante más; en audio MP3 usa el análisis más fino. Déjalo apagado para lotes grandes.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="maxCompressionToggle" />
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.audioKind.label">Tipo de audio</span>
+          <span class="setting-row__hint" data-i18n="settings.audioKind.hint">«Música» no baja la calidad de nada. «Solo voz» (charlas, predicaciones) guarda en mono y a menos tasa: pesa 2 a 3 veces menos y suena igual. Úsalo en un perfil propio.</span>
+        </div>
+        <div class="setting-row__control">
+          <select id="audioKindSelect" class="profile-select" aria-label="Tipo de audio" data-i18n-aria="settings.audioKind.label">
+            <option value="music" data-i18n="settings.audioKind.music">Música</option>
+            <option value="voice" data-i18n="settings.audioKind.voice">Solo voz</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.audioFormat.label">Formato de audio</span>
+          <span class="setting-row__hint" data-i18n="settings.audioFormat.hint">«Compatible» suena en cualquier equipo. «Opus» pesa un 35 % menos, pero necesita un reproductor moderno y no guarda la portada. «FLAC» deja WAV y AIFF en la mitad, idénticos bit a bit; lo que ya tiene pérdida va como «Compatible».</span>
+        </div>
+        <div class="setting-row__control">
+          <select id="audioFormatSelect" class="profile-select" aria-label="Formato de audio" data-i18n-aria="settings.audioFormat.label">
+            <option value="compat" data-i18n="settings.audioFormat.compat">Compatible</option>
+            <option value="opus">Opus</option>
+            <option value="flac">FLAC</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-row setting-row--stacked">
+        <div class="setting-row__label">
+          <span data-i18n="settings.output.label">Carpeta de salida</span>
+          <span class="setting-row__hint" data-i18n="settings.output.hint">Donde se guarda lo procesado. Lo que ya estaba en la carpeta anterior no se mueve.</span>
+          <span id="outputDirValue" class="setting-row__path"></span>
+        </div>
+        <div class="setting-row__actions">
+          <button id="chooseOutputBtn" class="btn btn--ghost btn--small" data-i18n="settings.output.change">Cambiar…</button>
+          <button id="resetOutputBtn" class="btn btn--ghost btn--small" data-i18n="settings.output.reset">Restablecer</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.skipDuplicates.label">Omitir duplicados</span>
+          <span class="setting-row__hint" data-i18n="settings.skipDuplicates.hint">Si sueltas una foto, vídeo o audio que es exactamente igual a uno ya importado, se omite (y te avisa, con un botón para procesarlo igualmente). Desactívalo si quieres volver a comprimir lo mismo con otros ajustes.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="skipDuplicatesToggle" />
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.webp.label">Convertir todo a WebP</span>
+          <span class="setting-row__hint" data-i18n="settings.webp.hint">Formato moderno con mejor compresión. Se conserva la calidad visual.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="webpToggle" />
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__label">
+          <span data-i18n="settings.heic.label">HEIC (iPhone): pasar siempre a JPG</span>
+          <span class="setting-row__hint" data-i18n="settings.heic.hint">Las fotos HEIC ya pesan poco: pasarlas a JPG suele hacerlas más pesadas, por eso normalmente se dejan como están. Actívalo si lo que quieres es que se abran en cualquier equipo o programa, aunque pesen más.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="heicToggle" />
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cuadro de dialogo propio (pedir un nombre / confirmar). No se usa
+       window.prompt porque Electron NO lo soporta: era la causa de que los
+       perfiles no se pudieran crear. -->
+  <div id="dialogOverlay" class="overlay dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <div class="dialog">
+      <h3 id="dialogTitle" class="dialog__title"></h3>
+      <p id="dialogMessage" class="dialog__message"></p>
+      <input id="dialogInput" class="dialog__input hidden" type="text" maxlength="60" autocomplete="off" spellcheck="false" />
+      <div class="dialog__actions">
+        <button id="dialogCancel" class="btn btn--ghost btn--small" type="button" data-i18n="dialog.cancel">Cancelar</button>
+        <button id="dialogOk" class="btn btn--primary btn--small" type="button" data-i18n="dialog.ok">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <div id="previewOverlay" class="overlay hidden">
+    <div class="preview-panel" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+      <div class="preview-panel__header">
+        <h2 id="previewTitle" data-i18n="preview.title">Antes y después</h2>
+        <div class="preview-panel__tools">
+          <button id="previewZoomBtn" class="btn btn--ghost btn--small hidden" type="button" aria-pressed="false" title="Muestra una zona de la foto sin reducir, para ver lo que de verdad cambió (atajo: Z)" data-i18n-title="preview.zoomTitle">Ver al 100 %</button>
+          <button id="closePreviewBtn" class="icon-btn" aria-label="Cerrar la vista previa" data-i18n-aria="preview.close">✕</button>
+        </div>
+      </div>
+      <p id="previewStatus" class="preview-status" data-i18n="preview.preparing">Preparando la vista previa…</p>
+      <div id="previewBody" class="hidden">
+        <div id="previewStageWrap" class="preview-stage-wrap">
+          <div id="previewStage" class="preview-stage" style="--split: 50%">
+            <img id="previewBefore" class="preview-stage__img" alt="Foto original" data-i18n-alt="preview.altBefore" draggable="false">
+            <img id="previewAfter" class="preview-stage__img preview-stage__img--after" alt="Foto comprimida" data-i18n-alt="preview.altAfter" draggable="false">
+            <span class="preview-divider" aria-hidden="true">
+              <span class="preview-divider__handle">
+                <svg viewBox="0 0 24 24"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"></path></svg>
+              </span>
+            </span>
+            <span class="preview-tag preview-tag--before" data-i18n="preview.tagBefore">Antes</span>
+            <span class="preview-tag preview-tag--after" data-i18n="preview.tagAfter">Después</span>
+            <span id="previewBusy" class="preview-busy hidden" data-i18n="preview.busy">Cargando zona…</span>
+          </div>
+          <div id="previewMinimap" class="preview-minimap hidden" title="Toca para cambiar la zona" data-i18n-title="preview.minimapTitle">
+            <img id="previewMinimapImg" alt="" draggable="false">
+            <span id="previewMinimapBox" class="preview-minimap__box"></span>
+          </div>
+        </div>
+        <input id="previewSlider" class="preview-slider" type="range" min="0" max="100" value="50" aria-label="Deslizar para comparar antes y después" data-i18n-aria="preview.sliderAria">
+        <p id="previewHint" class="preview-hint"></p>
+        <div class="preview-stats">
+          <div id="previewBeforeStats"></div>
+          <div id="previewAfterStats"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/locales/es.js"></script>
+  <script src="../shared/locales/en.js"></script>
+  <script src="../shared/locales/de.js"></script>
+  <script src="../shared/locales/it.js"></script>
+  <script src="../shared/locales/vi.js"></script>
+  <script src="../shared/locales/ar.js"></script>
+  <script src="../shared/i18n.js"></script>
+  <script src="js/dialog.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/dropzone.js"></script>
+  <script src="js/clipboard.js"></script>
+  <script src="js/queueView.js"></script>
+  <script src="js/previewView.js"></script>
+  <script src="js/queueReorder.js"></script>
+  <script src="js/settingsPanel.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

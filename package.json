@@ -1,0 +1,181 @@
+{
+  "name": "compacta",
+  "productName": "Compacta",
+  "version": "1.2.0",
+  "description": "Compresor de fotos y videos por lotes, 100% local, sin perder calidad visual.",
+  "author": "Robert Balanca Florentin",
+  "license": "MIT",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "electron tests/smoke-test-electron.js",
+    "test:ui": "electron tests/ui-test-electron.js",
+    "prebuild:linux-dir": "node scripts/prepare-ffmpeg.js linux x64",
+    "build:linux-dir": "electron-builder --linux dir --x64",
+    "test:packaged": "electron tests/packaged-smoke-test-electron.js",
+    "postinstall": "electron-builder install-app-deps",
+    "predist:mac": "npm install --no-save --os=darwin --cpu=x64 sharp && npm install --no-save --os=darwin --cpu=arm64 sharp && node scripts/prepare-ffmpeg.js darwin x64 && node scripts/prepare-ffmpeg.js darwin arm64",
+    "predist:win": "npm install --no-save --os=win32 --cpu=x64 sharp && node scripts/prepare-ffmpeg.js win32 x64",
+    "predist:all": "npm run predist:mac && npm run predist:win",
+    "dist:mac": "electron-builder --mac --universal -c.electronVersion=26.6.10",
+    "dist:win": "electron-builder --win --x64",
+    "dist:all": "npm run dist:mac && npm run dist:win",
+    "audit": "node scripts/audit-code.js"
+  },
+  "dependencies": {
+    "libheif-js": "1.23.5",
+    "sharp": "^0.33.5",
+    "yauzl": "^3.4.0"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8",
+    "ffmpeg-static": "^5.3.0"
+  },
+  "build": {
+    "appId": "com.tuempresa.compacta",
+    "productName": "Compacta",
+    "copyright": "Copyright © Robert Balanca Florentin",
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/sharp/**",
+      "**/node_modules/@img/**",
+      "**/node_modules/libheif-js/**",
+      "**/src/main/processor/heic-worker.js",
+      "**/src/main/processor/heic-color.js"
+    ],
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.photography",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "artifactName": "Compacta-${version}-Mac.${ext}",
+      "minimumSystemVersion": "10.13.0",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "sign": "./scripts/mac-sign.js",
+      "files": [
+        "src/**/*",
+        "package.json",
+        "!**/node_modules/@img/sharp-libvips-linux*/**",
+        "!**/node_modules/@img/sharp-linux*/**",
+        "!**/node_modules/@img/sharp-libvips-win32*/**",
+        "!**/node_modules/@img/sharp-win32*/**",
+        "!**/node_modules/libheif-js/libheif/**",
+        "!**/node_modules/libheif-js/libheif-wasm/libheif.js",
+        "!**/node_modules/libheif-js/libheif-wasm/libheif.wasm",
+        "!**/node_modules/libheif-js/libheif-wasm/*.mjs",
+        "!**/node_modules/libheif-js/libheif-wasm/*.d.ts",
+        "!**/node_modules/libheif-js/libheif/*.d.ts"
+      ],
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/darwin-${arch}",
+          "to": "ffmpeg",
+          "filter": [
+            "ffmpeg"
+          ]
+        },
+        {
+          "from": "vendor/ffmpeg/darwin-x64",
+          "to": "ffmpeg/licenses/x64",
+          "filter": [
+            "*.LICENSE",
+            "*.README"
+          ]
+        },
+        {
+          "from": "vendor/ffmpeg/darwin-arm64",
+          "to": "ffmpeg/licenses/arm64",
+          "filter": [
+            "*.LICENSE",
+            "*.README"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "files": [
+        "src/**/*",
+        "package.json",
+        "!**/node_modules/@img/sharp-libvips-linux*/**",
+        "!**/node_modules/@img/sharp-linux*/**",
+        "!**/node_modules/@img/sharp-libvips-darwin*/**",
+        "!**/node_modules/@img/sharp-darwin*/**",
+        "!**/node_modules/libheif-js/libheif/**",
+        "!**/node_modules/libheif-js/libheif-wasm/libheif.js",
+        "!**/node_modules/libheif-js/libheif-wasm/libheif.wasm",
+        "!**/node_modules/libheif-js/libheif-wasm/*.mjs",
+        "!**/node_modules/libheif-js/libheif-wasm/*.d.ts",
+        "!**/node_modules/libheif-js/libheif/*.d.ts"
+      ],
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/win32-${arch}",
+          "to": "ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "warningsAsErrors": false
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "Graphics",
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/linux-${arch}",
+          "to": "ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ],
+      "files": [
+        "src/**/*",
+        "package.json",
+        "!**/node_modules/libheif-js/libheif/**",
+        "!**/node_modules/libheif-js/libheif-wasm/libheif.js",
+        "!**/node_modules/libheif-js/libheif-wasm/libheif.wasm",
+        "!**/node_modules/libheif-js/libheif-wasm/*.mjs",
+        "!**/node_modules/libheif-js/libheif-wasm/*.d.ts",
+        "!**/node_modules/libheif-js/libheif/*.d.ts"
+      ]
+    }
+  }
+}
