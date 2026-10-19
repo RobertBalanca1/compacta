@@ -149,11 +149,20 @@ test('argumentos de ffmpeg: etiquetas y capitulos se copian, portada solo si cab
 
 // ---------------------------------------------------------------- audios REALES, formato por formato
 for (const fmt of FORMATS) {
-  test(`formato real ${fmt.file}: ${fmt.keeps ? 'ya ligero, se deja intacto' : `se comprime y sale como ${fmt.ext}`}`, async () => {
+  test(`formato real ${fmt.file}: ${fmt.keeps ? 'ya ligero, se deja intacto' : `se comprime y sale como ${fmt.ext}`}`, async (t) => {
     const dir = await tmpDir();
     try {
       const input = path.join(dir, fmt.file);
-      makeAudio(input, { codecArgs: fmt.codecArgs, channels: fmt.channels || 2, rate: fmt.rate || 44100, tags: { title: 'Mi cancion', artist: 'Yo' } });
+      try {
+        makeAudio(input, { codecArgs: fmt.codecArgs, channels: fmt.channels || 2, rate: fmt.rate || 44100, tags: { title: 'Mi cancion', artist: 'Yo' } });
+      } catch (err) {
+        // Algunas builds de ffmpeg (la de Apple Silicon que se incluye, sin libopencore_amrnb) no saben CREAR ciertos formatos
+        // para la prueba; eso no dice nada de Compacta. Cualquier otro fallo al preparar SI hace fallar la prueba.
+        if (/Unknown encoder|Encoder .* not found|Unable to (choose|find) a suitable (output format|muxer)|Requested output format .* is not known/i.test(String(err.message))) {
+          return t.skip(`este ffmpeg no sabe crear este formato (solo leerlo): ${fmt.file}`);
+        }
+        throw err;
+      }
       const originalBytes = (await fs.stat(input)).size;
       const report = await optimizeAudio(input, path.join(dir, 'out', fmt.file), { quality: 90 });
 

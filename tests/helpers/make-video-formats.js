@@ -59,7 +59,7 @@ const FORMATS = [
   { ext: '.mjpeg', args: ['-c:v', 'mjpeg', '-q:v', '3', '-f', 'mjpeg'], noAudio: true },
   { ext: '.mjpg', args: ['-c:v', 'mjpeg', '-q:v', '3', '-f', 'mjpeg'], noAudio: true },
   { ext: '.gxf', args: ['-c:v', 'mpeg2video', '-pix_fmt', 'yuv420p', '-s', '720x576', '-r', '25', '-c:a', 'pcm_s16le', '-ar', '48000', '-f', 'gxf'], size: '720x576', optional: true },
-  { ext: '.y4m', args: ['-c:v', 'rawvideo', '-pix_fmt', 'yuv420p', '-f', 'yuv4mpegpipe'], noAudio: true }
+  { ext: '.y4m', args: ['-c:v', 'rawvideo', '-pix_fmt', 'yuv420p', '-f', 'yuv4mpegpipe'], noAudio: true, optional: true } // el ffmpeg de Apple Silicon que se incluye no trae el muxer yuv4mpegpipe: no sabe CREARLO (la prueba se omite), leerlo no se ha podido comprobar ahi
 ];
 
 /** Devuelve true si pudo crear el clip, false si este ffmpeg no sabe crear ese formato. */
