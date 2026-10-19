@@ -19,8 +19,8 @@
     "predist:mac": "npm install --no-save --os=darwin --cpu=x64 sharp && npm install --no-save --os=darwin --cpu=arm64 sharp && node scripts/prepare-ffmpeg.js darwin x64 && node scripts/prepare-ffmpeg.js darwin arm64",
     "predist:win": "npm install --no-save --os=win32 --cpu=x64 sharp && node scripts/prepare-ffmpeg.js win32 x64",
     "predist:all": "npm run predist:mac && npm run predist:win",
-    "dist:mac": "electron-builder --mac --universal -c.electronVersion=26.6.10",
-    "dist:win": "electron-builder --win --x64",
+    "dist:mac": "USE_HARD_LINKS=false electron-builder --mac --universal --publish never -c.electronVersion=26.6.10",
+    "dist:win": "electron-builder --win --x64 --publish never",
     "dist:all": "npm run dist:mac && npm run dist:win",
     "audit": "node scripts/audit-code.js"
   },

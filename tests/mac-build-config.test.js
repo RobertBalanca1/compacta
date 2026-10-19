@@ -91,3 +91,11 @@ test('la firma ad-hoc se pide con las opciones correctas y un certificado real s
     void Module;
   }
 });
+
+test('los scripts de empaquetado funcionan en un servidor de CI: sin enlaces duros (Mac) y sin publicar solo (Mac y Windows)', () => {
+  // En CI electron-builder usa enlaces duros y la copia de heic-worker.js / heic-color.js (desempaquetados) choca con EEXIST;
+  // y por estar en CI intenta publicar y exige GH_TOKEN. Los dos fallos salieron en GitHub, no en local.
+  assert.match(pkg.scripts['dist:mac'], /USE_HARD_LINKS=false/);
+  assert.match(pkg.scripts['dist:mac'], /--publish never/);
+  assert.match(pkg.scripts['dist:win'], /--publish never/);
+});
