@@ -12,20 +12,37 @@ const ROOT = path.join(__dirname, '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const mac = pkg.build.mac;
 
-test('Mac: UN solo instalador (un .dmg universal), no uno por arquitectura ni .zip aparte', () => {
+test('Mac: cada variante es UN solo .dmg universal (Intel + Apple Silicon), sin .zip ni uno por arquitectura', () => {
   assert.equal(mac.target.length, 1, 'un solo target');
   assert.equal(mac.target[0].target, 'dmg');
   assert.deepEqual(mac.target[0].arch, ['universal'], 'Intel y Apple Silicon juntos');
-  assert.match(pkg.scripts['dist:mac'], /--universal/);
-  assert.doesNotMatch(pkg.scripts['dist:mac'], /--x64|--arm64/);
-  assert.match(mac.artifactName, /Mac\.\$\{ext\}$/, 'nombre claro: Compacta-X.Y.Z-Mac.dmg');
+  for (const script of ['dist:mac', 'dist:mac-legacy']) {
+    assert.match(pkg.scripts[script], /--universal/, script);
+    assert.doesNotMatch(pkg.scripts[script], /--x64|--arm64/, script);
+  }
+  assert.match(mac.artifactName, /Mac\.\$\{ext\}$/, 'el moderno: Compacta-X.Y.Z-Mac.dmg');
+  assert.match(pkg.scripts['dist:mac-legacy'], /Compacta-\$\{version\}-Mac-antiguo\.\$\{ext\}/, 'el antiguo se distingue en el NOMBRE');
 });
 
-test('Mac: el instalador llega a macOS 10.13 (Electron 26, el ultimo que arranca en 10.13/10.14)', () => {
-  const pinned = /-c\.electronVersion=(\d+)\.(\d+)\.(\d+)/.exec(pkg.scripts['dist:mac']);
-  assert.ok(pinned, 'dist:mac fija la version de Electron del Mac');
+test('Mac MODERNO: Electron del package.json (el mismo que Windows) y macOS 13 como minimo (lo que exige Electron 44)', () => {
+  assert.doesNotMatch(pkg.scripts['dist:mac'], /electronVersion/, 'sin fijar: usa el mismo Electron que Windows');
+  assert.equal(mac.minimumSystemVersion, '13.0.0');
+  assert.ok(Number(/\d+/.exec(pkg.devDependencies.electron)[0]) >= 38, 'Electron actual (desde la 38 se exige macOS 12 o mas)');
+});
+
+test('Mac ANTIGUO: Electron 26 (el ultimo que arranca en macOS 10.13/10.14) y macOS 10.13 como minimo', () => {
+  const pinned = /-c\.electronVersion=(\d+)\.(\d+)\.(\d+)/.exec(pkg.scripts['dist:mac-legacy']);
+  assert.ok(pinned, 'dist:mac-legacy fija la version de Electron');
   assert.ok(Number(pinned[1]) <= 26, `Electron ${pinned[1]} ya exige macOS 10.15 (desde la 27); la 26 es el limite para 10.13/10.14`);
-  assert.equal(mac.minimumSystemVersion, '10.13.0');
+  assert.match(pkg.scripts['dist:mac-legacy'], /-c\.mac\.minimumSystemVersion=10\.13\.0/);
+});
+
+test('sharp: el moderno (y Windows) usan la 0.35 (sin vulnerabilidades conocidas); el antiguo la 0.33.5 (la 0.35 exige macOS 10.15 y Node 20)', () => {
+  assert.equal(pkg.dependencies.sharp, '>=0.33.5 <0.36.0', 'el rango admite las dos, asi package.json es coherente con las dos instalaciones');
+  assert.match(pkg.scripts['predist:mac'], /sharp@\^0\.35/);
+  assert.match(pkg.scripts['predist:win'], /sharp@\^0\.35/);
+  assert.match(pkg.scripts['predist:mac-legacy'], /--cpu=x64 sharp@0\.33\.5/);
+  assert.match(pkg.scripts['predist:mac-legacy'], /--cpu=arm64 sharp@0\.33\.5/);
 });
 
 test('Mac: firma ad-hoc (sin ella Apple Silicon dice «dañada») y sin «runtime» (no se puede con firma ad-hoc)', () => {
@@ -35,7 +52,8 @@ test('Mac: firma ad-hoc (sin ella Apple Silicon dice «dañada») y sin «runtim
 });
 
 test('Mac: el ffmpeg va POR arquitectura y sus licencias aparte e IGUALES en las dos (si no, la fusion universal falla)', () => {
-  const [binary, ...licenses] = mac.extraResources;
+  const binary = mac.extraResources.find((entry) => entry.to === 'ffmpeg');
+  const licenses = mac.extraResources.filter((entry) => String(entry.to).startsWith('ffmpeg/licenses/'));
   assert.equal(binary.from, 'vendor/ffmpeg/darwin-${arch}');
   assert.deepEqual(binary.filter, ['ffmpeg'], 'solo el binario: las licencias de x64 y arm64 son archivos distintos');
   const sources = licenses.map((entry) => entry.from).sort();
@@ -51,10 +69,11 @@ test('Mac: las librerias nativas de las dos arquitecturas viajan fuera del .asar
   assert.doesNotMatch(files, /sharp-darwin/, 'las dos variantes de Mac SI entran');
 });
 
-test('Mac: predist prepara las dos arquitecturas de sharp y de ffmpeg', () => {
-  const predist = pkg.scripts['predist:mac'];
-  for (const text of ['--cpu=x64 sharp', '--cpu=arm64 sharp', 'prepare-ffmpeg.js darwin x64', 'prepare-ffmpeg.js darwin arm64']) {
-    assert.ok(predist.includes(text), `falta: ${text}`);
+test('Mac: los dos predist preparan las dos arquitecturas de sharp y de ffmpeg', () => {
+  for (const name of ['predist:mac', 'predist:mac-legacy']) {
+    for (const text of ['--cpu=x64 sharp', '--cpu=arm64 sharp', 'prepare-ffmpeg.js darwin x64', 'prepare-ffmpeg.js darwin arm64']) {
+      assert.ok(pkg.scripts[name].includes(text), `${name}: falta ${text}`);
+    }
   }
 });
 
@@ -124,4 +143,28 @@ test('los flujos de GitHub usan acciones que corren sobre Node 24 (las anteriore
     }
     assert.doesNotMatch(text, /softprops\/action-gh-release@v[12]\b/);
   }
+});
+
+test('los avisos de permisos de macOS (Documentos, Escritorio, Descargas, discos externos y de red) existen y estan en los 6 idiomas', () => {
+  const keys = ['NSDocumentsFolderUsageDescription', 'NSDesktopFolderUsageDescription', 'NSDownloadsFolderUsageDescription', 'NSRemovableVolumesUsageDescription', 'NSNetworkVolumesUsageDescription'];
+  for (const key of keys) assert.ok(String(mac.extendInfo[key] || '').length > 20, `Info.plist: falta ${key}`);
+  assert.ok(mac.extraResources.some((entry) => entry.from === 'build/mac-strings' && entry.to === '.'), 'las traducciones viajan en Resources');
+  for (const code of require('../src/shared/i18n').CODES) {
+    const file = path.join(ROOT, 'build', 'mac-strings', `${code}.lproj`, 'InfoPlist.strings');
+    assert.ok(fs.existsSync(file), `falta ${code}.lproj/InfoPlist.strings`);
+    const text = fs.readFileSync(file, 'utf8');
+    for (const key of keys) assert.match(text, new RegExp(`^"${key}" = ".{20,}";$`, 'm'), `${code}: falta ${key}`);
+  }
+});
+
+test('el flujo de GitHub construye, prueba y publica LAS DOS variantes de Mac (moderna y antigua)', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
+  assert.match(workflow, /script: dist:mac\n/);
+  assert.match(workflow, /script: dist:mac-legacy/);
+  assert.match(workflow, /artefacto: Compacta-Mac\n/);
+  assert.match(workflow, /artefacto: Compacta-Mac-antiguo/);
+  assert.match(workflow, /variante: \[moderno, antiguo\]/, 'las dos se prueban');
+  assert.match(workflow, /os: \[macos-latest, macos-15-intel\]/, 'en Apple Silicon y en Intel, con ejes limpios (4 pruebas)');
+  assert.match(workflow, /'13\.0\.0' \|\| '10\.13\.0'/, 'el minimo de macOS esperado de cada una');
+  assert.match(workflow, /pattern: Compacta-\*/, 'el Release lleva las dos y la de Windows');
 });

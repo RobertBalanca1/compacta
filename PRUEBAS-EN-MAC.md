@@ -1,6 +1,6 @@
 # Compacta en Mac: qué se implementó y cómo comprobarlo
 
-**Estado (v1.2.0): implementado y verificado todo lo que se puede verificar SIN un Mac; lo demás lo prueba GitHub en Macs reales
+**Estado (v1.2.2): implementado y verificado todo lo que se puede verificar SIN un Mac; lo demás lo prueba GitHub en Macs reales
 (Intel y Apple Silicon) en cada ejecución del flujo, y el resto está en esta lista para probarlo a mano.** Qué se hizo y cómo se
 midió: `DOCUMENTACION-PROYECTO.md`, 7.23. Este archivo sirve para que cualquiera con un Mac compruebe rápido qué funciona y mande el
 resultado de forma que se pueda arreglar sin adivinar.
@@ -22,12 +22,13 @@ NO puede probar: si tienes una, es la ayuda más valiosa. (¿Un Mac con macOS 10
 
 ## 2. Cómo conseguir la app para Mac
 
-Es **UN solo instalador**, `Compacta-1.2.0-Mac.dmg`, para Mac Intel y Apple Silicon. No se puede generar fuera de un Mac. Dos caminos:
+Hay **dos instaladores** (cada uno un solo `.dmg` universal, Intel + Apple Silicon): `Compacta-1.2.2-Mac.dmg` (macOS 13 o superior, mismo motor que Windows) y
+`Compacta-1.2.2-Mac-antiguo.dmg` (macOS 10.13 a 12, motor Electron 26; puede tener algún problema que la normal no tiene). Ninguno se puede generar fuera de un Mac. Dos caminos:
 
 - **GitHub Actions** (recomendado): subir `codigo-fuente/` a un repositorio de GitHub y ejecutar el flujo `.github/workflows/build.yml`
   (pestaña Actions → Construir instaladores → Run workflow). Genera el `.dmg`, lo prueba en un Mac Intel y uno Apple Silicon reales, y
   lo deja en «Artifacts» (o en «Releases» si se lanza con una etiqueta `v…`).
-- **En un Mac**: `cd codigo-fuente && npm ci && npm run dist:mac` (descarga las librerías de imagen y el ffmpeg de las dos
+- **En un Mac**: `cd codigo-fuente && npm ci && npm run dist:mac` (o `npm run dist:mac-legacy`) (descarga las librerías de imagen y el ffmpeg de las dos
   arquitecturas; necesita internet).
 
 **Al abrirla por primera vez** macOS dirá que no puede verificar al desarrollador (la app lleva firma «ad-hoc», gratuita, pero no está

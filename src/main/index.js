@@ -181,7 +181,7 @@ if (!gotSingleInstanceLock) {
     // ventana). Ahora se valida a la vez; quien necesite saber la carpeta definitiva espera a esa
     // validacion (`describeOutputDirWhenReady`, `applyConfiguredOutputDir`).
     applyLanguage(); // antes que nada: los avisos que salgan ya van en el idioma de la persona
-    refreshAppMenu(); // macOS: menu propio y en ese mismo idioma (en Windows/Linux no hace nada)
+    refreshAppMenu(); // macOS: menu propio y en ese mismo idioma; Windows/Linux: sin menu de ejemplo
     const outputReady = applyOutputDirAtStartup();
     fs.mkdirSync(getInputDir(), { recursive: true });
     registerProtocolHandler();

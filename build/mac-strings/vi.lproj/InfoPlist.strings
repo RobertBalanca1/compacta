@@ -1,0 +1,6 @@
+/* Textos de los avisos de permisos de macOS (Documentos, Escritorio, Descargas, discos externos y de red). */
+"NSDocumentsFolderUsageDescription" = "Compacta lưu ảnh, video và âm thanh đã nén vào thư mục Tài liệu của bạn (thư mục “Compacta”).";
+"NSDesktopFolderUsageDescription" = "Compacta cần đọc các ảnh, video và âm thanh bạn kéo vào từ Màn hình nền để nén chúng.";
+"NSDownloadsFolderUsageDescription" = "Compacta cần đọc các ảnh, video và âm thanh bạn kéo vào từ thư mục Tải về để nén chúng.";
+"NSRemovableVolumesUsageDescription" = "Compacta cần đọc các ảnh, video và âm thanh bạn kéo vào từ ổ đĩa ngoài hoặc USB để nén chúng.";
+"NSNetworkVolumesUsageDescription" = "Compacta cần đọc các ảnh, video và âm thanh bạn kéo vào từ thư mục mạng để nén chúng.";

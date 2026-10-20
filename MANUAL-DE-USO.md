@@ -120,8 +120,9 @@ como MKV** con todos los subtítulos, sus idiomas y las marcas de "por defecto"
 y "forzado" intactos. Un archivo de subtítulos aparte (`.srt` junto al vídeo)
 no se copia.
 
-**En Mac:** hay UN solo instalador (`Compacta-…-Mac.dmg`) para Mac Intel y Apple Silicon, y funciona desde macOS 10.13 (High
-Sierra) en Intel y desde macOS 11 (Big Sur) en Apple Silicon. La interfaz es la misma que en Windows. En un Mac con Apple Silicon y
+**En Mac:** hay dos instaladores, y los dos sirven para Mac Intel y para Mac con chip Apple. Si tu Mac tiene macOS 13 (Ventura) o más nuevo, usa
+`Compacta-…-Mac.dmg`; si tiene macOS 10.13 a 12, usa `Compacta-…-Mac-antiguo.dmg` (funciona, pero lleva un motor más antiguo y puede dar
+algún problema que la normal no da). La interfaz es la misma que en Windows. Para ver tu macOS: menú  → «Acerca de este Mac». En un Mac con Apple Silicon y
 macOS 11, los vídeos y los audios necesitan además Rosetta (si no la tienes, Compacta te lo dice y te da el comando de una línea para
 instalarla; las fotos funcionan igual). Si tu Mac todavía tiene macOS 10.12 (Sierra) o más viejo: Apple publica la misma lista de equipos
 compatibles para 10.12 y para 10.13 (High Sierra), así que ese Mac puede actualizarse gratis a macOS 10.13 desde la App Store y entonces Compacta funciona. Si un archivo RAR no se abre en un Mac o Windows

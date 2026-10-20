@@ -1637,7 +1637,7 @@ Repartidas `app.js main` (5 funciones con nombre), `settingsPanel.init` (4 pieza
 Linux, como en 1.0.13), 44/44 de interfaz, 17/17 de idiomas, paquete real de Linux (incluido un HEIC), `.asar` del instalador de Windows
 idéntico al fuente, instalador en árabe comprobado bajo wine. **NO verificado:** Windows real, Mac real, vídeo real, fotos HEIC reales de iPhone.
 
-### 7.23 — Mac terminado: un solo instalador, desde macOS 10.13, misma interfaz (v1.2.0)
+### 7.23 — Mac terminado: un solo instalador, desde macOS 10.13, misma interfaz (v1.2.0; desde 1.2.2 hay dos variantes, ver 7.25)
 
 **Qué se pidió.** Terminar Mac (corregir lo mal hecho, implementar lo que Windows tiene y Mac no, con calidad y velocidad), probarlo, quitar el
 «aplazado a propósito», que **el instalador sea UNO solo** para Macs viejos y modernos, que llegue a **macOS 10.14 o anterior** («tal vez 10.12 como mínimo»
@@ -1718,7 +1718,7 @@ de `rimraf` solo cambiaba un aviso por otro). Son herramientas de CONSTRUCCIÓN,
 **Lo que NO se arregló, y por qué:**
 - 8 vulnerabilidades «moderate» (`sprintf-js` ≤ 1.1.3, DoS por precisión sin límite, vía `roarr` ← `global-agent` ← `@electron/get`): **no existe ninguna versión corregida** de `sprintf-js`; solo
   afecta al registro de las herramientas de construcción. `npm audit fix` no puede arreglarlo (propone una versión de electron-builder anterior a la que ya está).
-- 1 vulnerabilidad «high» en `sharp` 0.33.5 (CVEs de libvips, libheif y librsvg). Se arregla en `sharp` 0.35.5, pero esa versión exige **Node ≥ 20.9 y macOS ≥ 10.15 en Intel** (medido en sus
+- (ACTUALIZADO en 1.2.2, 7.25: resuelta en Windows y Mac moderno con `sharp` 0.35.5; solo queda en el Mac antiguo.) 1 vulnerabilidad «high» en `sharp` 0.33.5 (CVEs de libvips, libheif y librsvg). Se arregla en `sharp` 0.35.5, pero esa versión exige **Node ≥ 20.9 y macOS ≥ 10.15 en Intel** (medido en sus
   binarios: libvips y `.node` con mínimo 10.15) y Electron 26 trae Node 18.16: subirla rompe justo macOS 10.13/10.14, que es un requisito. Por eso `sharp` queda en ^0.33.5 en TODAS las
   plataformas (así Mac y Windows se comportan igual). Riesgo real: solo al procesar una imagen maliciosa que la persona misma elija; la app es local y no abre nada de internet. Si algún día se
   renuncia a macOS < 10.15, subir `sharp` a 0.35.x y el Mac a un Electron actual resuelve esa alerta (y la de Chromium 116).
@@ -1747,6 +1747,61 @@ del Mac; fusión universal de Mac sin errores y con las mismas arquitecturas y m
 - En este entorno de desarrollo (Linux sin pantalla), mensajes de `dbus`/GPU/`shared_image` de Chromium y, con `sharp` dentro de Electron en Linux, `GLib-CRITICAL … key_id > 0`: solo Linux, no afectan a Windows ni a Mac.
 
 **Pendiente de comprobar en GitHub (necesita subirlo):** que el flujo con las acciones nuevas termine sin ninguna anotación amarilla y que el `.dmg` salga HFS+; los avisos exactos de GitHub no se pueden leer desde aquí sin un token.
+
+### 7.25 — Dos versiones de Mac (moderna y antigua), paridad con Windows y revisión de fallos (v1.2.2)
+
+**Se pidió:** otra repasada de fallos en Windows y en Mac (versión vieja y nueva), confirmar que todo lo de Windows está en Mac, valorar separar Mac en una versión para equipos antiguos y otra para
+modernos dejando claro que en los antiguos puede haber algún problema, y subir el contador de versión (1.2.2).
+
+**Decisión: dos instaladores de Mac, mismo código y misma interfaz; solo cambia el motor por debajo.** Motivo, medido en los binarios (`LC_BUILD_VERSION`): Electron 44 exige **macOS 13.0** (Intel y Apple Silicon) y Electron 26
+llega a **10.13**; no hay un único motor que cubra 10.13 y esté al día. Con UN solo instalador, TODOS los Macs (también los modernos) habrían quedado con Chromium 116 de 2023 y la librería de imágenes con vulnerabilidades;
+con dos, la mayoría usa el mismo motor que Windows.
+
+| | **Mac** (`Compacta-X.Y.Z-Mac.dmg`) | **Mac antiguo** (`Compacta-X.Y.Z-Mac-antiguo.dmg`) |
+|---|---|---|
+| Para | macOS 13 (Ventura) o superior, Intel o chip Apple | macOS 10.13 a 12 (Intel; chip Apple con macOS 11 o 12). También arranca en los nuevos, pero no hace falta |
+| Motor | Electron del `package.json` (44.9.1), el mismo que Windows | Electron 26.6.10 (Node 18.16, Chromium 116) |
+| `sharp` / libvips | 0.35.5 / 8.18.7 (0 vulnerabilidades de producción) | 0.33.5 / 8.15.3 (la 0.35 exige macOS 10.15 y Node 20) |
+| `LSMinimumSystemVersion` | 13.0.0 | 10.13.0 |
+| Se construye con | `npm run dist:mac` | `npm run dist:mac-legacy` (`predist:mac-legacy` instala `sharp@0.33.5`) |
+| Aviso al usuario | — | en el nombre del archivo (`-antiguo`), en el `LEEME.txt` y en el texto del Release: «funciona, pero puede tener algún problema que la normal no tiene» |
+
+Un Mac con macOS < 13 que intente abrir la versión normal recibe del Finder el aviso de que requiere macOS 13 (por `LSMinimumSystemVersion`), no un cierre inesperado. `package.json` declara `sharp` como
+`>=0.33.5 <0.36.0` para ser coherente con las dos instalaciones; `package-lock.json` fija la 0.35.5 (Windows, desarrollo y Mac moderno). La detección de macOS 11 en Apple Silicon (Rosetta para el ffmpeg, 7.23) solo
+puede ocurrir en la variante antigua.
+
+**Pruebas con cada pareja (Linux).** Moderna/Windows: Node 22 + `sharp` 0.35.5 + Electron 44: 447 pasan, 0 fallan (11 omitidas). Antigua: Node 18.16 (Electron 26 como Node) + `sharp` 0.33.5: 446 pasan y 1 falló (mi propia
+prueba de configuración, que aún describía «un solo Mac»; ya actualizada). Las dos fusiones universales se construyen y se inspeccionan aquí (mínimos: moderna 13.0.0 con `sharp` 10.15/11.0 y ffmpeg 10.13/12.0; antigua 10.13.0).
+El flujo de GitHub construye ambas, las abre en un Mac Intel y uno Apple Silicon reales (4 pruebas) y comprueba además el mínimo esperado de cada una, las claves de permisos y la sintaxis de los textos con `plutil -lint`.
+
+**Paridad de funciones Windows ↔ Mac (revisión del código con `grep` de todo lo que depende del sistema).** Todo lo que hace la app (cola, fotos/HEIC/vídeo/audio, duplicados, comprimidos con contraseña, pegar, arrastrar, 6 idiomas,
+ajustes, vista previa) es el MISMO código en los dos. Lo que cambia es lo que impone cada sistema, y todo tiene su equivalente:
+instalación (asistente con acceso directo ↔ arrastrar a Aplicaciones), aviso al terminar (notificación + parpadeo de la barra de tareas ↔ notificación + rebote del Dock), botones de la ventana (barra del sistema ↔ botones
+integrados con hueco en la barra), menú (ninguno ↔ menú propio en 6 idiomas con Edición), permisos (no hay ↔ textos explicativos en 6 idiomas para Documentos, Escritorio, Descargas y discos externos/red), primera apertura
+(aviso de SmartScreen ↔ aviso de Gatekeeper, ver `LEEME.txt`). No se encontró ninguna función de Windows que falte en Mac.
+
+**Fallos encontrados y corregidos en esta revisión.**
+1. **Windows (y Linux) enseñaban el menú de ejemplo de Electron** (Archivo/Edición/Ver/Ventana/Ayuda, con «Herramientas de desarrollo» y «Recargar» a la vista): nada lo quitaba. Ahora `refreshAppMenu` pone `Menu.setApplicationMenu(null)`
+   fuera de macOS, salvo con `--dev`; copiar/pegar/deshacer siguen funcionando solos en los campos de texto. (3 pruebas en `tests/app-menu.test.js`.)
+2. **Mac: los avisos de permiso de macOS salían sin explicación** (Documentos, Escritorio, Descargas, discos externos/red). Ahora `build.mac.extendInfo` + `build/mac-strings/<idioma>.lproj/InfoPlist.strings` (6 idiomas).
+3. **`sharp` 0.33.5 tenía una vulnerabilidad alta (CVE de libvips/libheif/librsvg)** y la 0.35.5 no puede llegar a macOS 10.13 → resuelta en Windows y Mac moderno (0 vulnerabilidades de producción), conservada solo en el Mac antiguo (que
+   no se puede arreglar sin subir el mínimo).
+4. `sharp-wasm32` (0.35) se excluye de los tres sistemas: es el respaldo en WebAssembly que no se usa y pesaba de más.
+5. Versión: `package.json` y `package-lock.json` pasan a **1.2.2** (la 1.2.0 ya estaba publicada en GitHub con el `.dmg` único; no existe 1.2.1).
+
+**Resultado final de las pruebas con el código de 1.2.2 (Linux, instalación limpia con `npm ci` entre una pareja y otra):**
+- Pareja moderna (Node 22 + `sharp` 0.35.5): 464 pruebas, 453 pasan, 11 omitidas (sin `rar`), 0 fallan, 0 avisos de obsolescencia. Interfaz 47/47 con Electron 44, idiomas 17/17.
+- Pareja antigua (Node 18.16 de Electron 26 + `sharp` 0.33.5): 453 pasan, 0 fallan, 0 avisos propios (solo el del ejecutor de pruebas de Node 18, ver 7.24). Interfaz 47/47 con Electron 26, idiomas 17/17.
+- Paquete real de Linux (arranca, descomprime ZIP, comprime vídeo y audio, decodifica HEIC) y verificador del paquete 7/7 con Electron 44 como motor.
+- Las dos variantes de Mac: construidas, fusionadas e inspeccionadas (moderna: `LSMinimumSystemVersion` 13.0.0; antigua: 10.13.0; las dos con Intel + Apple Silicon, seis `InfoPlist.strings` y las claves de permisos).
+- Instalador de Windows 1.2.2 (Electron 44.9.1, solo `sharp-win32-x64`, sin `sharp-wasm32`): construido sin ningún aviso y con `src/` idéntico al fuente.
+
+**Trampas del entorno de pruebas descubiertas en esta revisión.** (1) Alternar `sharp` 0.33.5 ↔ 0.35.5 en el mismo `node_modules` deja binarios nativos de una versión con el JS de la otra: `sharp` cae en silencio a su respaldo
+`@img/sharp-wasm32` (más lento) y Node imprime 97 veces `DEP0111 process.binding() is deprecated` desde ese paquete. No es un fallo del producto; basta `npm ci` al cambiar de pareja. (2) Al usar `sharp` dentro de Electron EN LINUX, `sharp`
+imprime su propio `[SharpElectronLinux] Warning: Binaries provided by Electron for use on Linux may be incompatible with sharp` (y a veces `GLib-CRITICAL`): solo Linux, no aplica a Windows ni a Mac.
+
+**Lo que sigue SIN poder afirmarse.** Nada de esto se ha ejecutado en macOS 10.13–12 ni en Windows real. La variante antigua se ha probado (Linux, Node 18) y construido, y GitHub la prueba en macOS reciente, pero no en un
+macOS antiguo; el motor es de 2023 y puede fallar algo propio de esos sistemas. Windows 7/8 no se soportan (Electron 23 en adelante); Windows 10 o superior.
 
 ## 8. Funciones agregadas sobre la marcha
 
@@ -1918,7 +1973,9 @@ de GitHub Actions incluido en `.github/workflows/build.yml`, que genera el `.dmg
 Esta sección existe porque el trabajo se ha ido pasando entre conversaciones
 y los mismos errores se repiten si no están escritos. Léela entera.
 
-### 13.1 Estado actual (v1.2.0)
+### 13.1 Estado actual (v1.2.2)
+- **1.2.2 (7.25): dos instaladores de Mac** (moderno macOS 13+ con el mismo motor que Windows; antiguo macOS 10.13–12 con Electron 26), paridad Windows↔Mac revisada, menú de ejemplo quitado en Windows,
+  avisos de permisos de macOS en 6 idiomas, `sharp` 0.35.5 salvo en el Mac antiguo.
 - **1.2.0 (7.23): Mac terminado.** Un solo `.dmg` universal (Electron 26, desde macOS 10.13), botones de ventana, menú propio, Rosetta para Apple Silicon con macOS 11,
   firma ad-hoc, flujo de GitHub que lo prueba en Macs reales. Windows sin cambios de funcionamiento. Pruebas: ver 7.23 y 7.24 (revisión de calidad).
 - **1.1.0 (7.21 y 7.22):** carpetas con el mismo nombre se unen (sin «(2)»), ZIP con contraseña, opción HEIC → JPG; empieza a comprimir antes (índice de duplicados compartido y entrega por tandas), 6 idiomas (es, en, de, it, vi,

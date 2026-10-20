@@ -63,7 +63,42 @@ test('en los 6 idiomas todas las etiquetas existen (ninguna sale como clave «me
   assert.equal(seen.size, 6, 'cada idioma tiene su propia palabra para «Edición»');
 });
 
-test('fuera de macOS no se instala ningun menu (Windows y Linux siguen igual)', () => {
-  assert.equal(refreshAppMenu({ platform: 'win32' }), false);
-  assert.equal(refreshAppMenu({ platform: 'linux' }), false);
+function fakeElectron() {
+  const calls = { menu: [], opened: [] };
+  return {
+    calls,
+    electron: {
+      app: { name: 'Compacta' },
+      shell: { openPath: (dir) => calls.opened.push(dir) },
+      Menu: {
+        setApplicationMenu: (menu) => calls.menu.push(menu),
+        buildFromTemplate: (template) => ({ template })
+      }
+    }
+  };
+}
+
+test('Windows y Linux: se QUITA el menu de ejemplo de Electron (trae «Herramientas de desarrollo»), no se instala el de Mac', () => {
+  for (const platform of ['win32', 'linux']) {
+    const { electron, calls } = fakeElectron();
+    assert.equal(refreshAppMenu({ platform, electron, devTools: false }), true);
+    assert.deepEqual(calls.menu, [null], `${platform}: sin menu`);
+  }
+});
+
+test('en desarrollo (--dev) Windows y Linux conservan el menu de Electron, con sus herramientas', () => {
+  const { electron, calls } = fakeElectron();
+  assert.equal(refreshAppMenu({ platform: 'win32', electron, devTools: true }), false);
+  assert.deepEqual(calls.menu, []);
+});
+
+test('macOS: se instala el menu propio, con la carpeta de salida enlazada', () => {
+  const { electron, calls } = fakeElectron();
+  assert.equal(refreshAppMenu({ platform: 'darwin', electron, devTools: false }), true);
+  assert.equal(calls.menu.length, 1);
+  const labels = calls.menu[0].template.map((entry) => entry.label);
+  assert.deepEqual(labels, ['Compacta', 'Archivo', 'Edición', 'Visualización', 'Ventana']);
+  const open = calls.menu[0].template.find((entry) => entry.label === 'Archivo').submenu[0];
+  open.click();
+  assert.equal(calls.opened.length, 1, 'abre la carpeta de salida');
 });

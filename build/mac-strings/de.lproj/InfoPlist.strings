@@ -1,0 +1,6 @@
+/* Textos de los avisos de permisos de macOS (Documentos, Escritorio, Descargas, discos externos y de red). */
+"NSDocumentsFolderUsageDescription" = "Compacta speichert die komprimierten Fotos, Videos und Audiodateien in Ihrem Ordner „Dokumente“ (Ordner „Compacta“).";
+"NSDesktopFolderUsageDescription" = "Compacta muss die Fotos, Videos und Audiodateien lesen, die Sie vom Schreibtisch hineinziehen, um sie zu komprimieren.";
+"NSDownloadsFolderUsageDescription" = "Compacta muss die Fotos, Videos und Audiodateien lesen, die Sie aus „Downloads“ hineinziehen, um sie zu komprimieren.";
+"NSRemovableVolumesUsageDescription" = "Compacta muss die Fotos, Videos und Audiodateien lesen, die Sie von externen Laufwerken oder USB-Sticks hineinziehen, um sie zu komprimieren.";
+"NSNetworkVolumesUsageDescription" = "Compacta muss die Fotos, Videos und Audiodateien lesen, die Sie aus Netzwerkordnern hineinziehen, um sie zu komprimieren.";

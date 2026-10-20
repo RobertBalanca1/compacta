@@ -250,7 +250,7 @@ function registerSettingsHandlers() {
     const saved = saveSettings(partial);
     if (partial && typeof partial === 'object' && 'language' in partial) {
       applyLanguage(); // idioma nuevo para los avisos de este proceso
-      refreshAppMenu(); // y para el menu de macOS
+      refreshAppMenu(); // y para el menu de macOS (en Windows/Linux vuelve a no poner ninguno)
     }
     return saved;
   });

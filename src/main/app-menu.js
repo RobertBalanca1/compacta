@@ -10,7 +10,7 @@ const { t } = require('../shared/i18n');
  * Ajustes. Y el menu «Edicion» es IMPRESCINDIBLE en Mac: ⌘C, ⌘V, ⌘X y ⌘Z no existen como teclas por si solas,
  * son atajos de ese menu; sin el no se podria ni pegar una foto del portapapeles (⌘V) ni copiar el texto de un aviso.
  *
- * En Windows y Linux no se toca nada (siguen con el menu de siempre): solo se instala en macOS.
+ * En Windows y Linux no hay menu (ver `refreshAppMenu`): este solo se instala en macOS.
  *
  * `buildMenuTemplate` es una funcion pura (datos -> plantilla): se prueba sin Mac. Las etiquetas salen de
  * i18n, asi que siguen el idioma de la app, y se reconstruye cuando se cambia ese idioma (`refreshAppMenu`).
@@ -80,16 +80,28 @@ function buildMenuTemplate({ appName, translate, openOutput, devTools = false })
   ];
 }
 
-/** Instala (o reinstala, tras cambiar de idioma) el menu. Solo hace algo en macOS; devuelve si lo instalo. */
-function refreshAppMenu({ platform = process.platform } = {}) {
-  if (platform !== 'darwin') return false;
-  const { app, Menu, shell } = require('electron');
+/**
+ * Instala (o reinstala, tras cambiar de idioma) el menu de la aplicacion.
+ *  - macOS: el menu propio de arriba.
+ *  - Windows y Linux: SIN menu. Sin esta orden Electron enseña su menu de ejemplo (Archivo, Edicion, Ver, Ventana, Ayuda) con
+ *    «Herramientas de desarrollo» y «Recargar» a la vista de cualquiera; la app no necesita ninguno (copiar/pegar y deshacer
+ *    funcionan solos dentro de los campos de texto, y «pegar una imagen» es el evento normal de pegado).
+ *  - En desarrollo (`npm run dev`) se deja el de Electron, que trae las herramientas de desarrollo.
+ * Devuelve si instalo o quito algo. `electron` y `devTools` se inyectan en las pruebas.
+ */
+function refreshAppMenu({ platform = process.platform, electron = null, devTools = process.argv.includes('--dev') } = {}) {
+  if (devTools && platform !== 'darwin') return false;
+  const { app, Menu, shell } = electron || require('electron');
+  if (platform !== 'darwin') {
+    Menu.setApplicationMenu(null);
+    return true;
+  }
   const { getOutputDir } = require('./paths');
   const template = buildMenuTemplate({
     appName: app.name || 'Compacta',
     translate: t,
     openOutput: () => { shell.openPath(getOutputDir()); },
-    devTools: process.argv.includes('--dev')
+    devTools
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   return true;

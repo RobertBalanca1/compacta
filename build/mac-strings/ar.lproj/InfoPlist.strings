@@ -1,0 +1,6 @@
+/* Textos de los avisos de permisos de macOS (Documentos, Escritorio, Descargas, discos externos y de red). */
+"NSDocumentsFolderUsageDescription" = "يحفظ Compacta الصور ومقاطع الفيديو والملفات الصوتية المضغوطة في مجلد المستندات لديك (مجلد «Compacta»).";
+"NSDesktopFolderUsageDescription" = "يحتاج Compacta إلى قراءة الصور ومقاطع الفيديو والملفات الصوتية التي تسحبها من سطح المكتب لضغطها.";
+"NSDownloadsFolderUsageDescription" = "يحتاج Compacta إلى قراءة الصور ومقاطع الفيديو والملفات الصوتية التي تسحبها من مجلد التنزيلات لضغطها.";
+"NSRemovableVolumesUsageDescription" = "يحتاج Compacta إلى قراءة الصور ومقاطع الفيديو والملفات الصوتية التي تسحبها من الأقراص الخارجية أو ذاكرات USB لضغطها.";
+"NSNetworkVolumesUsageDescription" = "يحتاج Compacta إلى قراءة الصور ومقاطع الفيديو والملفات الصوتية التي تسحبها من مجلدات الشبكة لضغطها.";

@@ -1,13 +1,15 @@
 name: Construir instaladores
 
 # Que hace este flujo (todo en la nube de GitHub, gratis; no hace falta un Mac):
-#   1. Construye UN solo instalador de Mac (Compacta-X.Y.Z-Mac.dmg) que sirve para Mac Intel y Apple Silicon, desde
-#      macOS 10.13 (con Electron 26: ver DOCUMENTACION-PROYECTO.md 7.23).
-#   2. Lo PRUEBA en Macs reales de las dos arquitecturas: abre el instalador, comprueba que lleva las dos, que la firma es
-#      valida, que la ventana arranca, y comprime de verdad una foto, un video y un audio con lo que lleva dentro.
+#   1. Construye DOS instaladores de Mac, cada uno UN solo .dmg universal (sirve para Mac Intel y Apple Silicon):
+#        - Compacta-X.Y.Z-Mac.dmg          -> macOS 13 (Ventura) o superior, con el MISMO motor que Windows (Electron actual).
+#        - Compacta-X.Y.Z-Mac-antiguo.dmg  -> macOS 10.13 a 12 (y tambien funciona en los nuevos), con Electron 26.
+#      Mismo codigo y misma interfaz; solo cambia el motor por debajo (ver DOCUMENTACION-PROYECTO.md 7.25).
+#   2. Los PRUEBA en Macs reales de las dos arquitecturas: abre cada instalador, comprueba que lleva las dos, que la firma
+#      es valida, que la ventana arranca, y comprime de verdad una foto, un HEIC, un video y un audio con lo que lleva dentro.
 #   3. Pasa las pruebas del proyecto en esos mismos Macs reales.
 #   4. Construye el instalador de Windows.
-#   5. Si lo lanzas con una etiqueta (v1.2.0...), lo publica en «Releases» con enlace de descarga.
+#   5. Si lo lanzas con una etiqueta (v1.2.2...), lo publica en «Releases» con enlace de descarga.
 #
 # Como se lanza a mano: pestaña «Actions» > «Construir instaladores» > «Run workflow». El resultado queda en «Artifacts».
 
@@ -25,12 +27,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ------------------------------------------------------------------ 1. El instalador de Mac
+  # ------------------------------------------------------------------ 1. Los instaladores de Mac
   build-mac:
-    name: Instalador de Mac (universal)
-    # Se construye en un Mac INTEL a proposito: en Apple Silicon, electron-builder fabrica el .dmg en formato APFS (dice que
-    # hdiutil ya no ofrece HFS+), y un APFS creado por un macOS moderno es el formato mas arriesgado de abrir en macOS 10.13/10.14.
-    # En Intel usa HFS+, que lee cualquier macOS. El .dmg sale igualmente universal (Intel + Apple Silicon).
+    name: Instalador de Mac ${{ matrix.variante }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variante: moderno
+            script: dist:mac
+            artefacto: Compacta-Mac
+          - variante: antiguo
+            script: dist:mac-legacy
+            artefacto: Compacta-Mac-antiguo
+    # Se construye en un Mac INTEL a proposito: en Apple Silicon, versiones anteriores de electron-builder fabricaban el .dmg en
+    # formato APFS, el mas arriesgado de abrir en macOS 10.13/10.14. En Intel usa HFS+ (que lee cualquier macOS) y ademas se
+    # pide HFS+ de forma explicita en package.json. Cada .dmg sale igualmente universal (Intel + Apple Silicon).
     runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
@@ -48,7 +60,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm run dist:mac 2>&1 | tee build.log
+          npm run ${{ matrix.script }} 2>&1 | tee build.log
 
       - name: Comprobar que sale UN solo .dmg
         run: |
@@ -60,25 +72,24 @@ jobs:
       - name: Guardar el instalador
         uses: actions/upload-artifact@v7
         with:
-          name: Compacta-Mac
+          name: ${{ matrix.artefacto }}
           path: dist/*.dmg
           if-no-files-found: error
 
-
   # ------------------------------------------------------------------ 2. Probar el .dmg en Macs reales
   verify-mac:
-    name: Probar el .dmg en ${{ matrix.label }}
+    name: Probar el .dmg ${{ matrix.variante }} en ${{ matrix.os == 'macos-latest' && 'Mac Apple Silicon' || 'Mac Intel' }}
     needs: build-mac
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-latest
-            label: Mac Apple Silicon
-          - os: macos-15-intel
-            label: Mac Intel
+        variante: [moderno, antiguo]
+        os: [macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    env:
+      ARTEFACTO: ${{ matrix.variante == 'moderno' && 'Compacta-Mac' || 'Compacta-Mac-antiguo' }}
+      MINIMO: ${{ matrix.variante == 'moderno' && '13.0.0' || '10.13.0' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -88,7 +99,7 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: Compacta-Mac
+          name: ${{ env.ARTEFACTO }}
           path: installer
 
       - name: Datos del Mac de prueba
@@ -123,8 +134,15 @@ jobs:
           done
           min=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")
           echo "macOS minimo declarado: $min"
-          [ "$min" = "10.13.0" ] || { echo "Se esperaba 10.13.0"; exit 1; }
+          [ "$min" = "$MINIMO" ] || { echo "Se esperaba $MINIMO"; exit 1; }
           ls "$APP/Contents/Resources/app.asar.unpacked/node_modules/@img"
+          # Avisos de permisos de macOS (Documentos, Escritorio, Descargas...): claves en Info.plist y textos de los 6 idiomas con sintaxis valida
+          for key in NSDocumentsFolderUsageDescription NSDesktopFolderUsageDescription NSDownloadsFolderUsageDescription NSRemovableVolumesUsageDescription NSNetworkVolumesUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Print :$key" "$APP/Contents/Info.plist" > /dev/null || { echo "Falta $key en Info.plist"; exit 1; }
+          done
+          n=0
+          for f in "$APP"/Contents/Resources/*.lproj/InfoPlist.strings; do plutil -lint "$f"; n=$((n+1)); done
+          [ "$n" = "6" ] || { echo "Se esperaban 6 InfoPlist.strings y hay $n"; exit 1; }
 
       - name: Firma (sin ella Apple Silicon diria que la app esta «dañada»)
         run: |
@@ -161,11 +179,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ventana-${{ matrix.os }}
+          name: ventana-${{ matrix.variante }}-${{ matrix.os }}
           path: ${{ runner.temp }}/ventana.png
           if-no-files-found: ignore
 
       - name: Pruebas del proyecto en este Mac
+        if: matrix.variante == 'moderno'
         run: |
           npm ci --no-audit --no-fund
           npm test
@@ -220,4 +239,12 @@ jobs:
           files: |
             release/*.dmg
             release/*.exe
+          body: |
+            ## Cual descargar
+
+            - **Windows**: `Compacta.Setup.*.exe`.
+            - **Mac con macOS 13 (Ventura) o mas nuevo** (Intel o chip Apple): `Compacta-*-Mac.dmg`. Es la version recomendada: lleva el mismo motor que la de Windows.
+            - **Mac con macOS 10.13 a 12** (Macs antiguos): `Compacta-*-Mac-antiguo.dmg`. Lleva un motor mas antiguo para poder arrancar en esos sistemas: funciona, pero puede tener algun problema que la version normal no tiene. Tambien se puede usar en un Mac nuevo, pero no hace falta.
+
+            Para saber que macOS tienes: menu  (manzana) → «Acerca de este Mac». Un Mac con macOS 10.12 o anterior no puede usar Compacta (se puede actualizar gratis a macOS 10.13 si el equipo es de finales de 2009 o posterior).
           generate_release_notes: true

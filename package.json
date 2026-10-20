@@ -1,7 +1,7 @@
 {
   "name": "compacta",
   "productName": "Compacta",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "description": "Compresor de fotos y videos por lotes, 100% local, sin perder calidad visual.",
   "author": "Robert Balanca Florentin",
   "license": "MIT",
@@ -16,17 +16,19 @@
     "build:linux-dir": "electron-builder --linux dir --x64",
     "test:packaged": "electron tests/packaged-smoke-test-electron.js",
     "postinstall": "electron-builder install-app-deps",
-    "predist:mac": "npm install --no-save --os=darwin --cpu=x64 sharp && npm install --no-save --os=darwin --cpu=arm64 sharp && node scripts/prepare-ffmpeg.js darwin x64 && node scripts/prepare-ffmpeg.js darwin arm64",
-    "predist:win": "npm install --no-save --os=win32 --cpu=x64 sharp && node scripts/prepare-ffmpeg.js win32 x64",
+    "predist:mac": "npm install --no-save --os=darwin --cpu=x64 sharp@^0.35.5 && npm install --no-save --os=darwin --cpu=arm64 sharp@^0.35.5 && node scripts/prepare-ffmpeg.js darwin x64 && node scripts/prepare-ffmpeg.js darwin arm64",
+    "predist:win": "npm install --no-save --os=win32 --cpu=x64 sharp@^0.35.5 && node scripts/prepare-ffmpeg.js win32 x64",
     "predist:all": "npm run predist:mac && npm run predist:win",
-    "dist:mac": "USE_HARD_LINKS=false electron-builder --mac --universal --publish never -c.electronVersion=26.6.10",
+    "dist:mac": "USE_HARD_LINKS=false electron-builder --mac --universal --publish never",
     "dist:win": "electron-builder --win --x64 --publish never",
-    "dist:all": "npm run dist:mac && npm run dist:win",
-    "audit": "node scripts/audit-code.js"
+    "dist:all": "npm run dist:mac && npm run dist:mac-legacy && npm run dist:win",
+    "audit": "node scripts/audit-code.js",
+    "predist:mac-legacy": "npm install --no-save --os=darwin --cpu=x64 sharp@0.33.5 && npm install --no-save --os=darwin --cpu=arm64 sharp@0.33.5 && node scripts/prepare-ffmpeg.js darwin x64 && node scripts/prepare-ffmpeg.js darwin arm64",
+    "dist:mac-legacy": "USE_HARD_LINKS=false electron-builder --mac --universal --publish never -c.electronVersion=26.6.10 -c.mac.minimumSystemVersion=10.13.0 -c.mac.artifactName='Compacta-${version}-Mac-antiguo.${ext}'"
   },
   "dependencies": {
     "libheif-js": "1.23.5",
-    "sharp": "^0.33.5",
+    "sharp": ">=0.33.5 <0.36.0",
     "yauzl": "^3.4.0"
   },
   "devDependencies": {
@@ -67,14 +69,22 @@
         }
       ],
       "artifactName": "Compacta-${version}-Mac.${ext}",
-      "minimumSystemVersion": "10.13.0",
+      "minimumSystemVersion": "13.0.0",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "sign": "./scripts/mac-sign.js",
       "x64ArchFiles": "Contents/Resources/app.asar.unpacked/node_modules/@img/**",
+      "extendInfo": {
+        "NSDocumentsFolderUsageDescription": "Compacta saves the compressed photos, videos and audio in your Documents folder (the “Compacta” folder).",
+        "NSDesktopFolderUsageDescription": "Compacta needs to read the photos, videos and audio you drag in from the Desktop in order to compress them.",
+        "NSDownloadsFolderUsageDescription": "Compacta needs to read the photos, videos and audio you drag in from Downloads in order to compress them.",
+        "NSRemovableVolumesUsageDescription": "Compacta needs to read the photos, videos and audio you drag in from external drives or USB sticks in order to compress them.",
+        "NSNetworkVolumesUsageDescription": "Compacta needs to read the photos, videos and audio you drag in from network folders in order to compress them."
+      },
       "files": [
         "src/**/*",
         "package.json",
+        "!**/node_modules/@img/sharp-wasm32/**",
         "!**/node_modules/@img/sharp-libvips-linux*/**",
         "!**/node_modules/@img/sharp-linux*/**",
         "!**/node_modules/@img/sharp-libvips-win32*/**",
@@ -109,6 +119,13 @@
             "*.LICENSE",
             "*.README"
           ]
+        },
+        {
+          "from": "build/mac-strings",
+          "to": ".",
+          "filter": [
+            "*.lproj/**"
+          ]
         }
       ]
     },
@@ -125,6 +142,7 @@
       "files": [
         "src/**/*",
         "package.json",
+        "!**/node_modules/@img/sharp-wasm32/**",
         "!**/node_modules/@img/sharp-libvips-linux*/**",
         "!**/node_modules/@img/sharp-linux*/**",
         "!**/node_modules/@img/sharp-libvips-darwin*/**",
@@ -170,6 +188,7 @@
       "files": [
         "src/**/*",
         "package.json",
+        "!**/node_modules/@img/sharp-wasm32/**",
         "!**/node_modules/libheif-js/libheif/**",
         "!**/node_modules/libheif-js/libheif-wasm/libheif.js",
         "!**/node_modules/libheif-js/libheif-wasm/libheif.wasm",

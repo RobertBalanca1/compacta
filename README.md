@@ -132,17 +132,18 @@ npm run test:ui     # prueba de interfaz real: abre la ventana y hace clic/tecle
 ## Generar los instaladores (.dmg / .exe)
 
 ```bash
-npm run dist:mac     # genera dist/Compacta-x.x.x-Mac.dmg: UN solo .dmg para Intel y Apple Silicon (ejecutar en macOS)
-npm run dist:win     # genera dist/Compacta Setup x.x.x.exe (se puede compilar desde Linux, macOS o Windows)
+npm run dist:mac         # dist/Compacta-x.x.x-Mac.dmg: macOS 13 o superior, Intel y Apple Silicon, con el mismo Electron que Windows (ejecutar en macOS)
+npm run dist:mac-legacy  # dist/Compacta-x.x.x-Mac-antiguo.dmg: macOS 10.13 a 12, Electron 26 y sharp 0.33.5 (ejecutar en macOS)
+npm run dist:win         # dist/Compacta Setup x.x.x.exe (se puede compilar desde Linux, macOS o Windows)
 ```
 
 > **macOS** solo se puede generar **en una Mac** (la fusión Intel + Apple Silicon necesita `lipo`, y el `.dmg`, `hdiutil`): por eso
 > se usa **GitHub Actions** (ver más abajo), que ya trae Macs. **Windows sí se puede compilar desde Linux o macOS**
 > (así se generó el .exe que acompaña este proyecto), usando Wine para incrustar el ícono — ver más abajo si vas a intentarlo tú mismo.
 >
-> **El Mac usa Electron 26** (`dist:mac` lo fija con `-c.electronVersion=26.6.10`) y Windows el Electron de `package.json` (44): Electron
-> 27 y posteriores ya no arrancan en macOS 10.13/10.14, y el requisito era llegar ahí. El código y la interfaz son los mismos (las
-> pruebas pasan con los dos motores). Ver `DOCUMENTACION-PROYECTO.md`, 7.23.
+> **Hay dos instaladores de Mac porque no existe un único motor que cubra macOS 10.13 y esté al día:** Electron 44 (el de Windows) exige
+> macOS 13; Electron 26 llega a macOS 10.13. Mismo código y misma interfaz (las pruebas pasan con las dos parejas). Cada `.dmg` es universal
+> (Intel + Apple Silicon). Ver `DOCUMENTACION-PROYECTO.md`, 7.25.
 
 ### Nota importante si vas a compilar tú mismo: binarios nativos por plataforma
 
@@ -168,14 +169,17 @@ Cada instalador lleva solo el suyo (`extraResources` con la macro `${arch}`): el
 de Mac Intel lleva el de x64 y el de Apple Silicon el de arm64. Los scripts `predist:*`
 y `prebuild:linux-dir` lo hacen solos; `vendor/` no se sube al repositorio (pesa ~290 MB).
 
-### Requisitos de macOS (medidos en los binarios del `.dmg`)
+### Requisitos de macOS (medidos en los binarios de los `.dmg`)
 
-| Equipo | App y fotos | Vídeos y audios |
-|---|---|---|
-| Mac Intel, macOS 10.13 (High Sierra) o superior | sí | sí |
-| Apple Silicon, macOS 12 o superior | sí | sí |
-| Apple Silicon, macOS 11 (Big Sur) | sí | sí, con Rosetta (si falta, se avisa con el comando para instalarla) |
-| macOS 10.12 o anterior | no (Electron 26, `sharp` y ffmpeg piden 10.13); pero **todo Mac que corre 10.12 puede actualizarse gratis a 10.13** (Apple publica la misma lista de equipos para las dos) | — |
+| Equipo | Instalador | Fotos y app | Vídeos y audios |
+|---|---|---|---|
+| macOS 13 (Ventura) o superior, Intel o chip Apple | `…-Mac.dmg` | sí | sí |
+| Intel con macOS 10.13 a 12 | `…-Mac-antiguo.dmg` | sí | sí |
+| Chip Apple con macOS 12 | `…-Mac-antiguo.dmg` | sí | sí |
+| Chip Apple con macOS 11 | `…-Mac-antiguo.dmg` | sí | sí, con Rosetta (si falta, se avisa con el comando para instalarla) |
+| macOS 10.12 o anterior | ninguno | no | no (Electron 26, `sharp` y ffmpeg piden 10.13); un Mac de finales de 2009 o posterior se puede actualizar gratis a 10.13 |
+
+La versión antigua funciona, pero lleva un motor de 2023 y puede tener algún problema que la normal no tiene. Si no sabes cuál usar: menú  → «Acerca de este Mac».
 
 Los comprimidos RAR/7z/tar usan el `tar` del sistema; el RAR5 puede no abrirse en
 sistemas antiguos (se usa 7-Zip si está instalado). Qué se verificó sin un Mac y qué no: ver
@@ -184,13 +188,13 @@ sistemas antiguos (se usa 7-Zip si está instalado). Qué se verificó sin un Ma
 ### GitHub Actions: así se genera y se prueba el `.dmg` (recomendado)
 
 `.github/workflows/build.yml` compila el `.dmg` universal y el `.exe` en la nube de GitHub (gratis para repos públicos), cada uno en su
-sistema operativo real, y **prueba el `.dmg` en un Mac Intel y uno Apple Silicon reales** (arquitecturas, firma, que la ventana abre, y que
+sistema operativo real, y **prueba cada `.dmg` en un Mac Intel y uno Apple Silicon reales** (arquitecturas, firma, que la ventana abre, y que
 comprime de verdad una foto, un HEIC, un vídeo y un audio con lo que lleva dentro) además de pasar `npm test` en ellos.
 
 1. Sube este proyecto a un repositorio de GitHub.
 2. Ve a la pestaña **Actions** → **Construir instaladores** → **Run workflow**.
-3. Cuando termine, descarga el instalador desde **Artifacts** del run (`Compacta-Mac` / `Compacta-Windows`), y la captura de la ventana
-   en `ventana-…` para mirarla. Si lo lanzas con una etiqueta (`git tag v1.2.0 && git push --tags`), además lo publica en **Releases**
+3. Cuando termine, descarga el instalador desde **Artifacts** del run (`Compacta-Mac`, `Compacta-Mac-antiguo` / `Compacta-Windows`), y la captura de la ventana
+   en `ventana-…` para mirarla. Si lo lanzas con una etiqueta (`git tag v1.2.2 && git push --tags`), además lo publica en **Releases**
    con enlace de descarga.
 
 ## Notas honestas sobre "calidad"
