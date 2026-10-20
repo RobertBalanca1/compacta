@@ -1643,7 +1643,7 @@ idéntico al fuente, instalador en árabe comprobado bajo wine. **NO verificado:
 «aplazado a propósito», que **el instalador sea UNO solo** para Macs viejos y modernos, que llegue a **macOS 10.14 o anterior** («tal vez 10.12 como mínimo»
 en la iglesia), con la **misma interfaz** que Windows, y que el `.dmg` lo genere GitHub.
 
-**Decisión central: el build de Mac usa Electron 26.6.10; Windows sigue en Electron 32.** Desde Electron 27 (Chromium 117) macOS 10.13 y 10.14 ya no se
+**Decisión central: el build de Mac usa Electron 26.6.10; Windows usa el de `package.json` (32 al hacer 1.2.0; subido a 44 en 7.24).** Desde Electron 27 (Chromium 117) macOS 10.13 y 10.14 ya no se
 soportan (documentado por Electron); la 26 es la última que arranca ahí. Se fija en el script `dist:mac` (`-c.electronVersion=26.6.10`), no en `package.json`, así
 `npm test` y Windows siguen con la 32. **Mismo código, misma interfaz:** se pasó todo con los dos motores (unitarias con Node 22 y con el Node 18.16 de Electron 26,
 vía `ELECTRON_RUN_AS_NODE=1`; interfaz con Electron 32 y con Electron 26). Lo único distinto entre sistemas es el hueco para los tres botones de la ventana de Mac
@@ -1705,6 +1705,48 @@ Cómo se lee un fallo desde aquí: los registros de GitHub no se pueden descarga
 en macOS no pueden simularse desde Linux. El aspecto real de los botones, notificaciones, Dock, permisos y la ruta de Rosetta en macOS 11: ver `PRUEBAS-EN-MAC.md`.
 Electron 26 (Chromium 116, 2023) no recibe parches de seguridad; la app no carga contenido de internet. Con macOS 26 («Tahoe») antes de la 26.2, los Electron anteriores a 2025 gastan GPU en `WindowServer` (bug de
 `_cornerMask`, arreglado por Apple en el sistema en 26.2); afecta igual a la 26 que a la 32.
+
+### 7.24 — Revisión de calidad de 1.2.0: dependencias, obsoletos y avisos
+
+**Se pidió:** que no quede ningún aviso ni cosa obsoleta, ni en local ni en GitHub, y optimizar. Resultado y lo que NO se pudo:
+
+**Subido (probado con todo):** `electron-builder` 25.1.8 → **26.15.3** y `electron` 32.3.3 → **44.9.1** (Windows y desarrollo; el Mac sigue fijado a 26.6.10 en `dist:mac`).
+Avisos «npm warn deprecated»: de **11 a 4**; vulnerabilidades de `npm audit`: de **20 a 9**. Los 4 avisos que quedan los trae la propia última versión de electron-builder
+(`inflight` y `glob@7` vía `@electron/asar`, `boolean` vía `@electron/get`, `rimraf@2` vía `electron-winstaller`): no se pueden quitar sin romper la herramienta (probado: un `overrides`
+de `rimraf` solo cambiaba un aviso por otro). Son herramientas de CONSTRUCCIÓN, no viajan en la app.
+
+**Lo que NO se arregló, y por qué:**
+- 8 vulnerabilidades «moderate» (`sprintf-js` ≤ 1.1.3, DoS por precisión sin límite, vía `roarr` ← `global-agent` ← `@electron/get`): **no existe ninguna versión corregida** de `sprintf-js`; solo
+  afecta al registro de las herramientas de construcción. `npm audit fix` no puede arreglarlo (propone una versión de electron-builder anterior a la que ya está).
+- 1 vulnerabilidad «high» en `sharp` 0.33.5 (CVEs de libvips, libheif y librsvg). Se arregla en `sharp` 0.35.5, pero esa versión exige **Node ≥ 20.9 y macOS ≥ 10.15 en Intel** (medido en sus
+  binarios: libvips y `.node` con mínimo 10.15) y Electron 26 trae Node 18.16: subirla rompe justo macOS 10.13/10.14, que es un requisito. Por eso `sharp` queda en ^0.33.5 en TODAS las
+  plataformas (así Mac y Windows se comportan igual). Riesgo real: solo al procesar una imagen maliciosa que la persona misma elija; la app es local y no abre nada de internet. Si algún día se
+  renuncia a macOS < 10.15, subir `sharp` a 0.35.x y el Mac a un Electron actual resuelve esa alerta (y la de Chromium 116).
+
+**Cambios necesarios por las versiones nuevas (los habría roto el siguiente build en GitHub):**
+1. `@electron/universal` 2.0.3 (de electron-builder 26) comprueba también los binarios dentro de `app.asar.unpacked`: las librerías de `sharp` de las DOS arquitecturas son idénticas en los dos
+   paquetes y hay que declararlas: `build.mac.x64ArchFiles = "Contents/Resources/app.asar.unpacked/node_modules/@img/**"` (el nombre engaña: vale para todo binario igual en ambos).
+   Sin ello: «Detected file … that's the same in both x64 and arm64 builds and not covered by the x64ArchFiles rule».
+2. `build.dmg.filesystem = "HFS+"` explícito: electron-builder 26 avisa de que el valor por defecto pasará a APFS en la próxima versión mayor (arriesgado en macOS 10.13/10.14). La versión nueva
+   también reintenta sola si `hdiutil` falla de forma transitoria al montar/desmontar (los «failed to mount» ocasionales). El flujo sigue comprobando que el `.dmg` es HFS+.
+3. Acciones de GitHub a las versiones que corren sobre Node 24 (`checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `download-artifact@v8`, `action-gh-release@v3`): las anteriores generaban
+   el aviso amarillo «Node.js 20 is deprecated». Todas conservan las entradas que usamos (comprobado en sus `action.yml`). `npm ci --no-audit --no-fund` quita las líneas informativas.
+   El desmontaje del `.dmg` en el flujo reintenta con `-force`.
+
+**Código:** sin APIs obsoletas (búsqueda estática y ejecución con `--trace-deprecation --pending-deprecation`: 0 avisos en Node 22, con Electron 44 ni con Electron 26). `scripts/audit-code.js`
+ya no avisa de funciones largas: `extractZip` (106 líneas) se dividió sacando `processEntry`, y `createDuplicateDetector` (91) sacando `compareWith`; sin cambiar su lógica (las pruebas de ZIP, importación y
+duplicados lo confirman). El ruido que se ve al probar en este entorno de desarrollo (mensajes de `dbus`/GPU/`shared_image` de Chromium sin pantalla real) no viene de la app.
+
+**Pruebas tras la revisión (código final, local):** 458 unitarias, 447 pasan, 11 omitidas (sin `rar`) y 0 fallan, con Node 22 (0 avisos de obsolescencia con `--trace-deprecation --pending-deprecation`) y con el Node 18.16
+de Electron 26; interfaz 47/47 con Electron 44 y con Electron 26; idiomas 17/17; paquete real de Linux (arranca, descomprime ZIP, comprime vídeo y audio, decodifica HEIC); verificador del paquete 7/7 con el motor
+del Mac; fusión universal de Mac sin errores y con las mismas arquitecturas y mínimos; instalador de Windows con Electron 44.9.1 construido sin ningún aviso y con `src/` idéntico al fuente.
+
+**Dos mensajes que se ven al probar y NO son de la app:**
+- Con el Node 18.16 de Electron 26, `MaxListenersExceededWarning … 11 abort listeners added to [AbortSignal]`: lo genera el propio ejecutor de pruebas de Node 18 (`node:internal/test_runner`) cuando un archivo tiene más de 10
+  pruebas (la traza lo confirma). No ocurre al usar la app ni en GitHub (usa Node 22).
+- En este entorno de desarrollo (Linux sin pantalla), mensajes de `dbus`/GPU/`shared_image` de Chromium y, con `sharp` dentro de Electron en Linux, `GLib-CRITICAL … key_id > 0`: solo Linux, no afectan a Windows ni a Mac.
+
+**Pendiente de comprobar en GitHub (necesita subirlo):** que el flujo con las acciones nuevas termine sin ninguna anotación amarilla y que el `.dmg` salga HFS+; los avisos exactos de GitHub no se pueden leer desde aquí sin un token.
 
 ## 8. Funciones agregadas sobre la marcha
 
@@ -1878,7 +1920,7 @@ y los mismos errores se repiten si no están escritos. Léela entera.
 
 ### 13.1 Estado actual (v1.2.0)
 - **1.2.0 (7.23): Mac terminado.** Un solo `.dmg` universal (Electron 26, desde macOS 10.13), botones de ventana, menú propio, Rosetta para Apple Silicon con macOS 11,
-  firma ad-hoc, flujo de GitHub que lo prueba en Macs reales. Windows sin cambios (Electron 32). Pruebas: ver 7.23.
+  firma ad-hoc, flujo de GitHub que lo prueba en Macs reales. Windows sin cambios de funcionamiento. Pruebas: ver 7.23 y 7.24 (revisión de calidad).
 - **1.1.0 (7.21 y 7.22):** carpetas con el mismo nombre se unen (sin «(2)»), ZIP con contraseña, opción HEIC → JPG; empieza a comprimir antes (índice de duplicados compartido y entrega por tandas), 6 idiomas (es, en, de, it, vi,
   ar con RTL; se elige en Ajustes), fotos HEIC (libheif-js en un hilo), audio con un solo ffmpeg para analizar. Pruebas: 394
   unitarias, 40 de interfaz, 17 de idiomas, paquete real de Linux.

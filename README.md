@@ -140,7 +140,7 @@ npm run dist:win     # genera dist/Compacta Setup x.x.x.exe (se puede compilar d
 > se usa **GitHub Actions** (ver más abajo), que ya trae Macs. **Windows sí se puede compilar desde Linux o macOS**
 > (así se generó el .exe que acompaña este proyecto), usando Wine para incrustar el ícono — ver más abajo si vas a intentarlo tú mismo.
 >
-> **El Mac usa Electron 26** (`dist:mac` lo fija con `-c.electronVersion=26.6.10`) y Windows el Electron 32 de `package.json`: Electron
+> **El Mac usa Electron 26** (`dist:mac` lo fija con `-c.electronVersion=26.6.10`) y Windows el Electron de `package.json` (44): Electron
 > 27 y posteriores ya no arrancan en macOS 10.13/10.14, y el requisito era llegar ahí. El código y la interfaz son los mismos (las
 > pruebas pasan con los dos motores). Ver `DOCUMENTACION-PROYECTO.md`, 7.23.
 

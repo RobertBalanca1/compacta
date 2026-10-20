@@ -34,15 +34,15 @@ jobs:
     runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - name: Instalar dependencias
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Compilar el instalador universal (Intel + Apple Silicon)
         shell: bash
@@ -58,7 +58,7 @@ jobs:
           ls dist/*.zip 2>/dev/null && { echo "No debe haber .zip de Mac"; exit 1; } || true
 
       - name: Guardar el instalador
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Compacta-Mac
           path: dist/*.dmg
@@ -80,13 +80,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: Compacta-Mac
           path: installer
@@ -108,7 +108,7 @@ jobs:
           diskutil info "$RUNNER_TEMP/dmg" | grep "File System Personality" | grep -q "HFS" || { echo "El .dmg no es HFS+"; exit 1; }
           mkdir -p "$RUNNER_TEMP/Applications"
           ditto "$RUNNER_TEMP/dmg/Compacta.app" "$RUNNER_TEMP/Applications/Compacta.app"
-          hdiutil detach "$RUNNER_TEMP/dmg"
+          hdiutil detach "$RUNNER_TEMP/dmg" || { sleep 3; hdiutil detach -force "$RUNNER_TEMP/dmg"; }
           echo "APP=$RUNNER_TEMP/Applications/Compacta.app" >> "$GITHUB_ENV"
 
       - name: Un solo programa para las dos arquitecturas, y macOS minimo
@@ -159,7 +159,7 @@ jobs:
 
       - name: Guardar la captura de la ventana (para mirarla)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ventana-${{ matrix.os }}
           path: ${{ runner.temp }}/ventana.png
@@ -167,7 +167,7 @@ jobs:
 
       - name: Pruebas del proyecto en este Mac
         run: |
-          npm ci
+          npm ci --no-audit --no-fund
           npm test
 
   # ------------------------------------------------------------------ 3. El instalador de Windows
@@ -176,15 +176,15 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - name: Instalar dependencias
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Compilar el instalador de Windows
         shell: bash
@@ -193,7 +193,7 @@ jobs:
           npm run dist:win 2>&1 | tee build.log
 
       - name: Guardar el instalador
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Compacta-Windows
           path: dist/*.exe
@@ -207,7 +207,7 @@ jobs:
     needs: [verify-mac, build-win]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: release
           merge-multiple: true
@@ -215,7 +215,7 @@ jobs:
 
       - run: ls -la release
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             release/*.dmg

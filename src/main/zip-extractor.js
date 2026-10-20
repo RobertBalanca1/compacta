@@ -95,6 +95,70 @@ function failureNotice(zipName, zipPath, depth, err) {
 }
 
 /**
+ * Trata UNA entrada del ZIP: la ignora (carpeta, basura del sistema, formato no admitido), la rechaza con un ArchiveError
+ * (demasiadas entradas, demasiado grande, ruta insegura), o la extrae (los comprimidos anidados, de forma recursiva).
+ * Los archivos buenos van a `extracted` y los subtitulos en archivo aparte a `sidecars`.
+ */
+async function processEntry({ entry, zipFile, zipPath, destDir, ctx, depth, extracted, sidecars }) {
+  ctx.entries += 1;
+  if (ctx.entries > ctx.limits.maxEntries) {
+    throw new ArchiveError('too-many-entries', 'demasiados archivos');
+  }
+  if (/\/$/.test(entry.fileName)) return; // carpeta: se crea al escribir sus archivos
+  const segments = safeSegments(entry.fileName);
+  if (!segments) return; // basura del sistema: se ignora sin avisar
+  const leaf = segments[segments.length - 1];
+  const isNestedArchive = isArchiveFile(leaf);
+
+  const isSubtitle = isSubtitleFile(leaf);
+  if (!isNestedArchive && !isSupportedMedia(leaf) && !isSubtitle) {
+    recordSkipped(ctx, leaf);
+    return;
+  }
+  if (entry.uncompressedSize > ctx.limits.maxEntryBytes
+    || ctx.totalBytes + entry.uncompressedSize > ctx.limits.maxTotalBytes) {
+    throw new ArchiveError('too-big', 'demasiado grande');
+  }
+  ctx.totalBytes += entry.uncompressedSize;
+
+  const target = path.join(destDir, ...segments);
+  // Defensa en profundidad: aunque safeSegments ya lo impide, se
+  // comprueba que la ruta final siga dentro del destino.
+  const rel = path.relative(destDir, target);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new ArchiveError('unsafe-path', `ruta insegura en el ZIP: ${entry.fileName}`);
+  }
+
+  const stream = await openStream(zipFile, zipPath, entry, ctx);
+
+  if (isNestedArchive) {
+    if (depth + 1 >= ctx.limits.maxDepth) {
+      stream.resume();
+      recordSkipped(ctx, leaf);
+      return;
+    }
+    const tmpZip = path.join(os.tmpdir(), `compacta-nested-${crypto.randomBytes(8).toString('hex')}${path.extname(leaf)}`);
+    try {
+      await pipeline(stream, fs.createWriteStream(tmpZip));
+      const nestedDir = path.join(path.dirname(target), archiveStem(leaf));
+      // Se le pasa el nombre real (no el temporal) para los avisos de error.
+      const nested = await extractNested(tmpZip, leaf, nestedDir, ctx, depth + 1);
+      extracted.push(...nested);
+    } finally {
+      await fsp.unlink(tmpZip).catch(() => {});
+    }
+    return;
+  }
+
+  await fsp.mkdir(path.dirname(target), { recursive: true });
+  const finalPath = await uniqueFilePath(target);
+  // Escritura atomica compartida con los compresores (con reintentos si un
+  // antivirus tiene el archivo agarrado justo al terminar de escribirlo).
+  await atomicWrite(finalPath, (tmp) => pipeline(stream, fs.createWriteStream(tmp)));
+  (isSubtitle ? sidecars : extracted).push(finalPath);
+}
+
+/**
  * Extrae las imagenes de un ZIP dentro de `destDir`.
  * Devuelve la lista de rutas (ya escritas) de las imagenes extraidas.
  * Nunca lanza por un ZIP defectuoso: lo anota en ctx.failedArchives.
@@ -132,64 +196,7 @@ async function extractZip(zipPath, destDir, ctx = createContext(), depth = 0) {
       });
 
       zipFile.on('entry', (entry) => {
-        (async () => {
-          ctx.entries += 1;
-          if (ctx.entries > ctx.limits.maxEntries) {
-            throw new ArchiveError('too-many-entries', 'demasiados archivos');
-          }
-          if (/\/$/.test(entry.fileName)) return; // carpeta: se crea al escribir sus archivos
-          const segments = safeSegments(entry.fileName);
-          if (!segments) return; // basura del sistema: se ignora sin avisar
-          const leaf = segments[segments.length - 1];
-          const isNestedArchive = isArchiveFile(leaf);
-
-          const isSubtitle = isSubtitleFile(leaf);
-          if (!isNestedArchive && !isSupportedMedia(leaf) && !isSubtitle) {
-            recordSkipped(ctx, leaf);
-            return;
-          }
-          if (entry.uncompressedSize > ctx.limits.maxEntryBytes
-            || ctx.totalBytes + entry.uncompressedSize > ctx.limits.maxTotalBytes) {
-            throw new ArchiveError('too-big', 'demasiado grande');
-          }
-          ctx.totalBytes += entry.uncompressedSize;
-
-          const target = path.join(destDir, ...segments);
-          // Defensa en profundidad: aunque safeSegments ya lo impide, se
-          // comprueba que la ruta final siga dentro del destino.
-          const rel = path.relative(destDir, target);
-          if (rel.startsWith('..') || path.isAbsolute(rel)) {
-            throw new ArchiveError('unsafe-path', `ruta insegura en el ZIP: ${entry.fileName}`);
-          }
-
-          const stream = await openStream(zipFile, zipPath, entry, ctx);
-
-          if (isNestedArchive) {
-            if (depth + 1 >= ctx.limits.maxDepth) {
-              stream.resume();
-              recordSkipped(ctx, leaf);
-              return;
-            }
-            const tmpZip = path.join(os.tmpdir(), `compacta-nested-${crypto.randomBytes(8).toString('hex')}${path.extname(leaf)}`);
-            try {
-              await pipeline(stream, fs.createWriteStream(tmpZip));
-              const nestedDir = path.join(path.dirname(target), archiveStem(leaf));
-              // Se le pasa el nombre real (no el temporal) para los avisos de error.
-              const nested = await extractNested(tmpZip, leaf, nestedDir, ctx, depth + 1);
-              extracted.push(...nested);
-            } finally {
-              await fsp.unlink(tmpZip).catch(() => {});
-            }
-            return;
-          }
-
-          await fsp.mkdir(path.dirname(target), { recursive: true });
-          const finalPath = await uniqueFilePath(target);
-          // Escritura atomica compartida con los compresores (con reintentos si un
-          // antivirus tiene el archivo agarrado justo al terminar de escribirlo).
-          await atomicWrite(finalPath, (tmp) => pipeline(stream, fs.createWriteStream(tmp)));
-          (isSubtitle ? sidecars : extracted).push(finalPath);
-        })().then(() => {
+        processEntry({ entry, zipFile, zipPath, destDir, ctx, depth, extracted, sidecars }).then(() => {
           if (!settled) zipFile.readEntry();
         }, fail);
       });

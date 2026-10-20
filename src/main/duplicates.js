@@ -162,6 +162,22 @@ function makeFingerprints() {
 }
 
 /**
+ * Compara `filePath` con un `candidate` del mismo tamano: 'igual', 'distinto' o 'desaparecido' (el candidato ya no esta:
+ * se borro la salida, se elimino de la cola...; no cuenta). Si el que falla es el archivo NUEVO, el error sube y se trata
+ * como unico. `mine.full` guarda el hash completo del archivo nuevo para no recalcularlo con cada candidato.
+ */
+async function compareWith(candidate, filePath, size, myEdge, mine, { edge, full }) {
+  try {
+    if ((await edge(candidate, size)) !== myEdge) return 'distinto';
+    mine.full = mine.full || await full(filePath);
+    return (await full(candidate)) === mine.full ? 'igual' : 'distinto';
+  } catch (err) {
+    if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR') && candidate !== filePath) return 'desaparecido';
+    throw err;
+  }
+}
+
+/**
  * Crea un detector sobre lo que hay AHORA en `inputDir`. Hay que crearlo ANTES
  * de copiar nada de la importacion actual, para que lo nuevo no se compare
  * consigo mismo. Con `index` (el compartido) no recorre el disco: reutiliza lo ya sabido.
@@ -186,26 +202,19 @@ async function createDuplicateDetector(inputDir, { isLive = async () => true, in
     const candidates = bySize.get(size);
     if (!candidates || candidates.length === 0) return null;
     const myEdge = await edge(filePath, size);
-    let myFull = null;
+    const mine = { full: null }; // el hash completo del archivo nuevo: se calcula solo si hace falta, y una vez
     let found = null;
     // Los candidatos que ya no existen se quitan del indice AL FINAL (no se copia la lista en cada
     // archivo: con miles de copias del mismo tamano eso seria cuadratico).
     const gone = [];
     try {
       for (const candidate of candidates) {
-        try {
-          if ((await edge(candidate, size)) !== myEdge) continue;
-          myFull = myFull || await full(filePath);
-          if ((await full(candidate)) !== myFull) continue;
-        } catch (err) {
-          // El candidato ya no esta (se borro la salida, se elimino de la cola...): no cuenta. Si el
-          // que falla es el archivo NUEVO, el error sube y se trata como unico.
-          if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR') && candidate !== filePath) {
-            gone.push(candidate);
-            continue;
-          }
-          throw err;
+        const verdict = await compareWith(candidate, filePath, size, myEdge, mine, { edge, full });
+        if (verdict === 'desaparecido') {
+          gone.push(candidate);
+          continue;
         }
+        if (verdict === 'distinto') continue;
         if (arrivedNow.has(candidate)) return 'importacion';
         if (!found && await isLive(candidate)) found = 'anterior';
       }

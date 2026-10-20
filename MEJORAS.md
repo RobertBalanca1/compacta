@@ -226,7 +226,7 @@ registro de qué se fue agregando y cuándo.
       - **Un solo `.dmg` universal** (`Compacta-1.2.0-Mac.dmg`): Intel + Apple Silicon juntos; ya no hay `.zip` ni uno por arquitectura.
       - **Llega a macOS 10.13 / 10.14** (lo pedido): el build de Mac usa **Electron 26** (el ultimo que arranca ahi; desde la 27 hace falta
         macOS 10.15). Mismo codigo y misma interfaz: las 454 pruebas unitarias (443 pasan, 11 se omiten por no haber `rar`) con Node 22 y con el Node 18 de Electron 26, y las
-        47 de interfaz con Electron 32 (Windows) y con Electron 26 (Mac). Minimo medido en los binarios: 10.13 en Intel, 11 en Apple Silicon.
+        47 de interfaz con Electron 44 (Windows) y con Electron 26 (Mac). Minimo medido en los binarios: 10.13 en Intel, 11 en Apple Silicon.
       - **Corregido: los botones de la ventana tapaban el logotipo** (hueco a la izquierda, tambien en arabe, y se quita en pantalla completa).
       - **Menu de Mac propio**, en los 6 idiomas, con «Edicion» (sin el, ⌘C/⌘V no funcionan) y sin «Herramientas de desarrollo».
       - **Apple Silicon con macOS 11: los videos y audios ahora SI funcionan** (con Rosetta, usando la parte Intel del mismo ffmpeg); si no

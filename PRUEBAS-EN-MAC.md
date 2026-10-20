@@ -49,7 +49,7 @@ Verificado (repetible: `DOCUMENTACION-PROYECTO.md`, 7.23):
 | Un solo `.app` con las dos arquitecturas | Ejecutable, Electron y ffmpeg son «fat» (x86_64 + arm64), fusionados con la misma herramienta (`@electron/universal`) que usa electron-builder |
 | macOS mínimo declarado | `LSMinimumSystemVersion` = 10.13.0 |
 | Mínimos medidos en las cabeceras Mach-O | Intel: Electron 26 → 10.13, `sharp`/libvips → 10.13, ffmpeg → 10.13. Apple Silicon: Electron 26 → 11.0, `sharp` → 11.0, ffmpeg → **12.0** (cubierto con Rosetta en macOS 11) |
-| Menú, hueco de los botones, pantalla completa | Probados en la interfaz real de Electron (simulando Mac): 47/47 con Electron 32 y con Electron 26 |
+| Menú, hueco de los botones, pantalla completa | Probados en la interfaz real de Electron (simulando Mac): 47/47 con Electron 44 (Windows) y con Electron 26 (Mac) |
 | Las pruebas del proyecto con el Node del Mac | Pasan con Node 22 y con el Node 18.16 de Electron 26 |
 | `.asar` del `.dmg` | Su `src/` es idéntico al del código fuente |
 

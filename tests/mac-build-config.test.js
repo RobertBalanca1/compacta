@@ -107,3 +107,21 @@ test('los scripts de empaquetado funcionan en un servidor de CI: sin enlaces dur
   assert.match(pkg.scripts['dist:mac'], /--publish never/);
   assert.match(pkg.scripts['dist:win'], /--publish never/);
 });
+
+test('el .dmg se pide en HFS+ de forma explicita y las librerias de sharp se declaran para la fusion universal', () => {
+  // electron-builder 26 avisa de que el formato por defecto pasara a APFS en la proxima version mayor (APFS: arriesgado en macOS 10.13/10.14).
+  assert.equal(pkg.build.dmg.filesystem, 'HFS+');
+  // @electron/universal 2.x exige que todo binario IGUAL en los dos paquetes (las librerias de sharp de las dos arquitecturas) se declare;
+  // sin esto la fusion falla con «same in both x64 and arm64 builds and not covered by the x64ArchFiles rule».
+  assert.equal(mac.x64ArchFiles, 'Contents/Resources/app.asar.unpacked/node_modules/@img/**');
+});
+
+test('los flujos de GitHub usan acciones que corren sobre Node 24 (las anteriores dan el aviso «Node.js 20 is deprecated»)', () => {
+  for (const file of ['build.yml', 'test-mac.yml']) {
+    const text = fs.readFileSync(path.join(ROOT, '.github', 'workflows', file), 'utf8');
+    for (const [, name, major] of text.matchAll(/uses:\s*(actions\/[a-z-]+)@v(\d+)/g)) {
+      assert.ok(Number(major) >= 6, `${file}: ${name}@v${major} corre sobre Node 20`);
+    }
+    assert.doesNotMatch(text, /softprops\/action-gh-release@v[12]\b/);
+  }
+});
