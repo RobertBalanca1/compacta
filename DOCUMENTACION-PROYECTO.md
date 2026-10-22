@@ -1664,10 +1664,10 @@ y otro ffmpeg: no se hizo y no se recomienda.
    idéntico («Expected all non-binary files to have identical SHAs»). Ahora el binario va por arquitectura y las licencias de AMBAS viajan aparte (`Resources/ffmpeg/licenses/x64|arm64`).
    Los ffmpeg se fusionan solos en un binario «fat»; las librerías de `sharp` de las dos arquitecturas son idénticas en los dos paquetes y pasan sin ajustes (los archivos dentro de
    `app.asar.unpacked` los trata `mergeASARs`, no la comprobación Mach-O).
-3. **Firma ad-hoc** (`scripts/mac-sign.js`, `build.mac.sign`): sin ella, electron-builder no firma nada y el `.app` sale con la firma original de Electron rota; **Apple Silicon lo rechaza con «está dañado»**.
+3. **Firma ad-hoc** (`build.mac.identity = "-"`, `timestamp = "none"`; en 1.2.0 era una función propia, `scripts/mac-sign.js`, retirada en 1.2.2, ver 7.27): sin ella, electron-builder no firma nada y el `.app` sale con la firma original de Electron rota; **Apple Silicon lo rechaza con «está dañado»**.
    Con firma ad-hoc (gratis) sale el aviso normal de «no verificado». `hardenedRuntime: false` a propósito: con «runtime», macOS solo carga librerías del MISMO equipo de desarrollo y una firma
-   ad-hoc no tiene equipo. Si algún día hay certificado (Developer ID): `hardenedRuntime: true`, `build/entitlements.mac.plist` (allow-jit, allow-unsigned-executable-memory, disable-library-validation) y las
-   variables `CSC_LINK`/`CSC_KEY_PASSWORD`/`APPLE_ID…` para notarizar; el script ya delega en la firma normal si hay identidad.
+   ad-hoc no tiene equipo. Si algún día hay certificado (Developer ID): quitar `identity: "-"` y `timestamp`, poner `hardenedRuntime: true`, añadir `build/entitlements.mac.plist` (allow-jit, allow-unsigned-executable-memory, disable-library-validation) y las
+   variables `CSC_LINK`/`CSC_KEY_PASSWORD`/`APPLE_ID…` para notarizar.
 4. **Botones de la ventana** (corregido): `trafficLightPosition {18, 25}` + `html[data-platform='mac'] .topbar` (padding-left FÍSICO de 88 px: en macOS los botones siguen a la izquierda también con árabe; barra de 64 px para centrarlos;
    sin hueco en pantalla completa vía los eventos `enter/leave-full-screen` → `window:fullscreen`). Probado en español y árabe, ventana normal y mínima (con capturas).
 5. **Menú de Mac** (`src/main/app-menu.js`): en los 6 idiomas (`menu.*`), con «Edición» (sin él ⌘C/⌘V no existen), sin «Herramientas de desarrollo» (solo con `--dev`); se reconstruye al cambiar de idioma. Windows/Linux no cambian.
@@ -1838,6 +1838,16 @@ que no existía («Si algún día hay certificado» → 7.23, punto 3); y los re
 - Paquete de Linux (arranca, ZIP, vídeo, audio, HEIC) y verificador del paquete 7/7 con Electron 44. Instalador de Windows 1.2.2 (Electron 44.9.1, solo `sharp-win32-x64`) sin avisos y con `src/` idéntico al fuente.
 
 **Lo que esta revisión NO puede asegurar:** lo mismo que en 7.25 (nada se ha ejecutado en macOS 10.13–12 ni en Windows real; GitHub todavía no ha corrido el flujo con estos cambios) y, por su naturaleza, cualquier fallo que solo se vea con un Mac o un Windows de verdad.
+
+### 7.27 — Fallo que SOLO apareció en GitHub: electron-builder 26 ya no firma si no hay certificado
+
+**Síntoma.** En la primera ejecución real de 1.2.2 (etiqueta `v1.2.2`) los dos `.dmg` y el `.exe` se construyeron, pero las 4 pruebas en Macs reales fallaron en el paso «Firma» (`codesign --verify`), que sí pasaba con 1.2.0.
+**Causa (leída en `node_modules/app-builder-lib/out/macPackager.js` y `mac/MacTargetHelper.js`).** En electron-builder 25, si no había certificado pero sí `build.mac.sign`, se llamaba a esa función propia (`scripts/mac-sign.js`, que firmaba ad-hoc).
+En la 26, `sign()` hace `if (!identity) return false` ANTES de mirar `sign`: sin certificado no firma nada ni llama a nuestra función. El `.app` salía SIN firma (en Apple Silicon: «está dañado»). Desde la 26 hay firma ad-hoc nativa: `identity: "-"`.
+**Arreglo.** `build.mac.identity = "-"` + `build.mac.timestamp = "none"` (sin sello de hora de Apple, que necesita red) + `hardenedRuntime: false` (ya estaba). Se retira `scripts/mac-sign.js` y su prueba (código que la versión nueva hace innecesario);
+`tests/mac-build-config.test.js` vigila ahora `identity`, `timestamp`, `hardenedRuntime` y que no vuelva la función propia.
+**Lección.** La firma NO se puede probar desde Linux (`isSignAllowed()` es falso fuera de macOS): el paso «Firma» del flujo, en Macs reales, es la única comprobación, y detectó el fallo ANTES de publicar (el Release no se creó: depende de que las pruebas pasen).
+**Estado:** corregido en el código; su efecto se confirma en la siguiente ejecución del flujo (ver 13.1).
 
 ## 8. Funciones agregadas sobre la marcha
 
@@ -2148,7 +2158,7 @@ hace `exec wine <ruta>/ffmpeg.exe "$@"`.
     su contenido (`diff -r src` contra el asar extraído a `/tmp`) y armar el zip.
 
 18. **Mac ya no está aplazado (v1.2.0, 7.23).** Lo que NO se puede dar por hecho: que funcione en un Mac real. Mantener `PRUEBAS-EN-MAC.md` al día con cada función nueva y,
-    ante cualquier cambio de `package.json` → `build.mac`, de `scripts/mac-sign.js` o del `.github/workflows/build.yml`, repetir la fusión universal de 7.23 (la rompió ya una vez algo tan
+    ante cualquier cambio de `package.json` → `build.mac`, de la firma (`identity`/`timestamp`) o del `.github/workflows/build.yml`, repetir la fusión universal de 7.23 (la rompió ya una vez algo tan
     pequeño como un archivo de licencia distinto). El Mac se compila con otro Electron que Windows: **toda función nueva debe probarse con los dos** (ver 13.4).
 19. **Una función nueva que toque importación necesita revisar `skipDuplicates`
     en las pruebas** (ver 7.16): si importa el mismo archivo sintético varias

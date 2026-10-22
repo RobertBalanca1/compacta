@@ -45,10 +45,14 @@ test('sharp: el moderno (y Windows) usan la 0.35 (sin vulnerabilidades conocidas
   assert.match(pkg.scripts['predist:mac-legacy'], /--cpu=arm64 sharp@0\.33\.5/);
 });
 
-test('Mac: firma ad-hoc (sin ella Apple Silicon dice «dañada») y sin «runtime» (no se puede con firma ad-hoc)', () => {
-  assert.equal(mac.hardenedRuntime, false);
-  assert.equal(mac.sign, './scripts/mac-sign.js');
-  assert.equal(typeof require(path.join(ROOT, 'scripts', 'mac-sign.js')), 'function');
+test('Mac: firma ad-hoc pedida con identity "-" (sin firma, Apple Silicon dice «dañada») y sin «runtime» (no se puede con firma ad-hoc)', () => {
+  // electron-builder 26 NO llama a ninguna firma si no encuentra certificado (en la 25 si llamaba a una funcion propia): la unica forma de
+  // firmar gratis es identity "-". Sin esto el .app salia SIN firma y las pruebas de GitHub fallaron en el paso «Firma».
+  assert.equal(mac.identity, '-');
+  assert.equal(mac.timestamp, 'none', 'el sello de hora de Apple necesita red y no tiene sentido en una firma ad-hoc');
+  assert.equal(mac.hardenedRuntime, false, 'con «runtime» macOS solo carga librerias del MISMO equipo; una firma ad-hoc no tiene equipo');
+  assert.equal(mac.sign, undefined, 'ya no hace falta una funcion de firma propia');
+  assert.ok(!fs.existsSync(path.join(ROOT, 'scripts', 'mac-sign.js')));
 });
 
 test('Mac: el ffmpeg va POR arquitectura y sus licencias aparte e IGUALES en las dos (si no, la fusion universal falla)', () => {
@@ -84,31 +88,6 @@ test('el flujo de GitHub genera el .dmg, sin .zip, y lo prueba en Macs reales (I
   assert.doesNotMatch(workflow, /path:[^\n]*\.zip/, 'no se sube ningun .zip de Mac');
   assert.match(workflow, /macos-\d+-intel|macos-13/, 'prueba tambien en un Mac Intel');
   assert.match(workflow, /macos-latest/, 'y en uno Apple Silicon');
-});
-
-test('la firma ad-hoc se pide con las opciones correctas y un certificado real se respeta', async () => {
-  const Module = require('module');
-  const sign = require(path.join(ROOT, 'scripts', 'mac-sign.js'));
-  const entry = require.resolve('@electron/osx-sign', { paths: [require.resolve('app-builder-lib')] });
-  const calls = [];
-  const original = require.cache[entry];
-  require.cache[entry] = { id: entry, filename: entry, loaded: true, exports: { signAsync: async (options) => { calls.push(options); } }, children: [], paths: [] };
-  try {
-    const base = { app: '/x/Compacta.app', optionsForFile: () => ({ hardenedRuntime: true, entitlements: 'e.plist' }), platform: 'darwin' };
-    await sign({ ...base, identity: undefined });
-    assert.equal(calls[0].identity, '-', 'sin certificado: ad-hoc');
-    assert.equal(calls[0].identityValidation, false);
-    const perFile = calls[0].optionsForFile('/x/Compacta.app/Contents/MacOS/Compacta');
-    assert.equal(perFile.timestamp, 'none');
-    assert.equal(perFile.hardenedRuntime, false);
-    assert.equal(perFile.entitlements, 'e.plist', 'lo demas de la configuracion se conserva');
-    await sign({ ...base, identity: 'Developer ID Application: Alguien' });
-    assert.equal(calls[1].identity, 'Developer ID Application: Alguien', 'con certificado real: sin tocar');
-    assert.equal(calls[1].optionsForFile, base.optionsForFile);
-  } finally {
-    if (original) require.cache[entry] = original; else delete require.cache[entry];
-    void Module;
-  }
 });
 
 test('el .dmg se construye en un Mac Intel (HFS+, legible en macOS 10.13/10.14) y se comprueba su formato', () => {

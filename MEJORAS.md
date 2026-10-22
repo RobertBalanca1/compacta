@@ -347,6 +347,6 @@ Ya no está aplazado: se implementó y se verificó todo lo que se puede verific
         aquí**). Es la vía más barata para quitar el aviso del todo, pero cambia cómo se distribuye.
       - **SignPath Foundation:** firma gratis para proyectos de código abierto (hay que cumplir sus requisitos).
       - Mientras tanto, lo que ya hay: «Más información → Ejecutar de todas formas» (explicado en `LEEME.txt`).
-      - Mac: «no se puede verificar el desarrollador» necesita Apple Developer (99 USD/año). Hoy la app lleva firma ad-hoc (gratis, `scripts/mac-sign.js`) para que
+      - Mac: «no se puede verificar el desarrollador» necesita Apple Developer (99 USD/año). Hoy la app lleva firma ad-hoc (gratis, `build.mac.identity: "-"`) para que
         abra en Apple Silicon; con certificado de pago se puede notarizar (7.23).
-      - `electron-builder` ya firma solo si encuentra un certificado (variables `CSC_LINK` y `CSC_KEY_PASSWORD`); hoy imprime «signing is skipped».
+      - Con certificado de pago (variables `CSC_LINK` y `CSC_KEY_PASSWORD`) se firmaría de verdad; hoy se firma ad-hoc (`identity "-"`).

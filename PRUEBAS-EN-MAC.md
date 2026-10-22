@@ -271,7 +271,7 @@ Anotar el modelo de Mac, el tiempo total y si el Mac se calentó o se puso lento
 | Nombres Unicode (NFC/NFD) | `src/main/processor/formats.js` → `foldName()` |
 | Barra de título, botones y pantalla completa | `src/main/index.js` (`titleBarStyle`, `trafficLightPosition`, `enter/leave-full-screen`), `preload.js` y `styles.css` (`html[data-platform='mac'] .topbar`) |
 | Menú de la app | `src/main/app-menu.js` (y `menu.*` en `src/shared/locales/`) |
-| Dos `.dmg` universales (moderno y antiguo), firma ad-hoc | `package.json` → `build.mac`, `dist:mac` y `dist:mac-legacy`; `scripts/mac-sign.js` |
+| Dos `.dmg` universales (moderno y antiguo), firma ad-hoc | `package.json` → `build.mac` (`identity "-"`), `dist:mac` y `dist:mac-legacy` |
 | Prueba del `.dmg` en Macs reales | `.github/workflows/build.yml` y `scripts/verify-packaged-engine.js` |
 | Revisión de un `.app` (arquitecturas y macOS mínimo de cada pieza) y fusión Intel + Apple Silicon desde Linux | `scripts/mac-app-tools.js` (`check` / `merge`) y `src/main/macho.js` |
 | Rebote del Dock | `src/main/notifier.js` |

@@ -68,9 +68,10 @@
       ],
       "artifactName": "Compacta-${version}-Mac.${ext}",
       "minimumSystemVersion": "13.0.0",
+      "identity": "-",
+      "timestamp": "none",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "sign": "./scripts/mac-sign.js",
       "x64ArchFiles": "Contents/Resources/app.asar.unpacked/node_modules/@img/**",
       "extendInfo": {
         "NSDocumentsFolderUsageDescription": "Compacta saves the compressed photos, videos and audio in your Documents folder (the “Compacta” folder).",
