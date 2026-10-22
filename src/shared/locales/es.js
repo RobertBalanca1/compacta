@@ -102,8 +102,6 @@
     'settings.audioFormat.label': `Formato de audio`,
     'settings.audioFormat.hint': `«Compatible» suena en cualquier equipo. «Opus» pesa un 35 % menos, pero necesita un reproductor moderno y no guarda la portada. «FLAC» deja WAV y AIFF en la mitad, idénticos bit a bit; lo que ya tiene pérdida va como «Compatible».`,
     'settings.audioFormat.compat': `Compatible`,
-    'settings.audioFormat.opus': `Opus`,
-    'settings.audioFormat.flac': `FLAC`,
     'settings.output.label': `Carpeta de salida`,
     'settings.output.hint': `Donde se guarda lo procesado. Lo que ya estaba en la carpeta anterior no se mueve.`,
     'settings.output.change': `Cambiar…`,

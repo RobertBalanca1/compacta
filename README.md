@@ -153,10 +153,10 @@ normal solo descarga el binario de tu propio sistema — el instalador quedaría
 binario de Windows y la app fallaría al abrir con el error
 `Could not load the sharp module using the win32-x64 runtime`.
 
-Por eso los scripts `dist:mac` y `dist:win` tienen un paso previo automático
-(`predist:mac` / `predist:win` en `package.json`) que descarga también el binario
+Por eso los scripts `dist:mac`, `dist:mac-legacy` y `dist:win` tienen un paso previo automático
+(`predist:mac` / `predist:mac-legacy` / `predist:win` en `package.json`) que descarga también el binario
 nativo del sistema de destino antes de empaquetar. No tienes que hacer nada extra:
-basta con correr `npm run dist:win` o `npm run dist:mac` y el binario correcto se
+basta con correr `npm run dist:win`, `npm run dist:mac` o `npm run dist:mac-legacy` y el binario correcto se
 descarga solo. Esto ya se probó de punta a punta: se generó el `.exe`, se verificó
 que el binario de Windows queda físicamente incluido (no solo referenciado), y se
 confirmó que ya no arrastra binarios de otras plataformas de forma innecesaria.

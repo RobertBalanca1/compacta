@@ -492,7 +492,7 @@ async function run() {
     await js('document.getElementById("chooseArchiveBtn").click()');
     const dialogState = () => js(`(() => { const o = document.getElementById('dialogOverlay'); const i = document.getElementById('dialogInput'); return { open: !o.classList.contains('hidden'), type: i.type, title: document.getElementById('dialogTitle').textContent, message: document.getElementById('dialogMessage').textContent }; })()`);
     await waitFor(async () => (await dialogState()).open, 6000);
-    let state = await dialogState();
+    const state = await dialogState();
     assert(state.type === 'password', `el campo debe ocultar lo que se escribe: ${state.type}`);
     assert(/Reservadas/.test(state.message) && /contraseña/.test(state.message), `debe nombrar el comprimido: ${state.message}`);
     assert(queueManager.jobs.length === before, 'mientras se pregunta, no se importa nada');
@@ -640,12 +640,12 @@ async function run() {
     nextDialogFiles = [ddir];
     await js('document.getElementById("chooseFolderBtn").click()');
     await waitFor(() => js('!document.getElementById("duplicatesNotice").classList.contains("hidden")'), 5000)
-      .catch(async () => { throw new Error(`debia avisar del duplicado: \"${await js('document.getElementById("toast").textContent')}\"`); });
+      .catch(async () => { throw new Error(`debia avisar del duplicado: "${await js('document.getElementById("toast").textContent')}"`); });
     const notice = await js('document.getElementById("duplicatesNoticeText").textContent');
-    assert(/idéntic/.test(notice) && /ya estaba comprimido/.test(notice), `el aviso dice que es identico y ya estaba comprimido: \"${notice}\"`);
+    assert(/idéntic/.test(notice) && /ya estaba comprimido/.test(notice), `el aviso dice que es identico y ya estaba comprimido: "${notice}"`);
     assert(/parecido/.test(notice), 'y que lo parecido nunca se omite');
     assert(queueManager.jobs.length === afterFirst, 'no entra nada nuevo en la cola');
-    assert(!(await js('/No se encontraron/.test(document.getElementById("toast").textContent) && !document.getElementById("toast").classList.contains("hidden")')), 'no dice \"no se encontraron fotos\" cuando en realidad eran duplicados');
+    assert(!(await js('/No se encontraron/.test(document.getElementById("toast").textContent) && !document.getElementById("toast").classList.contains("hidden")')), 'no dice "no se encontraron fotos" cuando en realidad eran duplicados');
     if (process.env.UI_SHOT_DIR) {
       fs.mkdirSync(process.env.UI_SHOT_DIR, { recursive: true });
       fs.writeFileSync(path.join(process.env.UI_SHOT_DIR, 'duplicados.png'), (await getWin().webContents.capturePage()).toPNG());
@@ -660,7 +660,7 @@ async function run() {
     assert(await js('!document.getElementById("importSkippedBtn").classList.contains("hidden")'), 'el boton aparece (se sabe de donde venia)');
     await js('document.getElementById("importSkippedBtn").click()');
     await waitFor(() => queueManager.jobs.length === afterFirst + 1, 6000)
-      .catch(() => { throw new Error('\"Procesar de todos modos\" debia volver a importar la foto'); });
+      .catch(() => { throw new Error('"Procesar de todos modos" debia volver a importar la foto'); });
     await waitQueueDrained();
     assert(await js('document.getElementById("duplicatesNotice").classList.contains("hidden")'), 'el aviso se retira al procesar');
     assert(await js('document.getElementById("skipDuplicatesToggle").checked === true'), 'el ajuste sigue activado');
@@ -727,7 +727,7 @@ async function run() {
     }
   });
 
-  await test('AUDIO: soltar un audio ya ligero (MP3 de 96 kbps) lo deja intacto y dice \"Sin cambios\"; el texto de la pantalla ya habla de audios', async () => {
+  await test('AUDIO: soltar un audio ya ligero (MP3 de 96 kbps) lo deja intacto y dice "Sin cambios"; el texto de la pantalla ya habla de audios', async () => {
     const { makeAudio } = require('./helpers/make-audio');
     const f = path.join(tmpRoot, 'src', 'Audios', 'ligero.mp3');
     makeAudio(f, { codecArgs: ['-c:a', 'libmp3lame', '-b:a', '96k'], seconds: 7 });
@@ -739,7 +739,7 @@ async function run() {
     const job = queueManager.jobs[queueManager.jobs.length - 1];
     assert(job.status === 'done' && job.report && job.report.skipped === true && job.report.reason === 'ya-optimizado', JSON.stringify(job.report));
     await waitFor(() => js('/Sin cambios/.test(Array.from(document.querySelectorAll("#queueList li")).pop().querySelector(".queue-item__badge").textContent)'), 5000)
-      .catch(() => { throw new Error('la fila debia decir \"Sin cambios\"'); });
+      .catch(() => { throw new Error('la fila debia decir "Sin cambios"'); });
     const title = await js('document.querySelector(".dropzone__title").textContent');
     assert(/audios/.test(title), `el titulo menciona audios: ${title}`);
   });
@@ -966,7 +966,7 @@ async function run() {
     deepEq(await domOrder(), realOrder(), 'pantalla y cola coinciden');
 
     // 1.0.10: tambien se puede agarrar la fila por el NOMBRE (no solo por el asa).
-    assert(await js(`document.querySelector('[data-id=\"${mine[0]}\"]').draggable === true`), 'la fila pendiente es arrastrable entera');
+    assert(await js(`document.querySelector('[data-id="${mine[0]}"]').draggable === true`), 'la fila pendiente es arrastrable entera');
     assert(await js(`[...document.querySelectorAll('#queueList li:not(.queue-item--pending)')].every((li) => li.draggable === false)`), 'las demas filas NO');
     await drag(mine[0], mine[2], 'bottom', '.queue-item__name');
     await waitFor(async () => JSON.stringify(await domOrder()) === JSON.stringify(realOrder()), 3000);
@@ -1054,7 +1054,7 @@ async function run() {
     await js(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
   });
 
-  await test('Comprimidos RAR y 7z: se eligen con el boton y sus fotos y videos se comprimen', async (t) => {
+  await test('Comprimidos RAR y 7z: se eligen con el boton y sus fotos y videos se comprimen', async () => {
     const { makeArchive, TOOLS } = require('./helpers/make-archive');
     if (!TOOLS.rar || !TOOLS.sevenZip) { console.log('        (omitida: faltan rar/7z para fabricar los archivos)'); return; }
     const { makeVideo } = require('./helpers/make-video');

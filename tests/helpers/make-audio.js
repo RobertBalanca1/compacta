@@ -6,7 +6,6 @@
 // margen de compresion y no es un tono puro (que cualquier codec reduce a nada).
 
 const fs = require('fs');
-const path = require('path');
 const { spawnSync } = require('child_process');
 const { getFfmpegPath } = require('../../src/main/processor/ffmpeg');
 

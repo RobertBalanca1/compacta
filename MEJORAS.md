@@ -221,10 +221,11 @@ registro de qué se fue agregando y cuándo.
       - Alta densidad de píxeles: la interfaz completa (40 pruebas) pasa a escala 1,5 y 2 (simulada con Electron).
       - `styles.css` revisado (sin clases sin uso; 2 selectores duplicados fundidos; propiedades lógicas para RTL).
 
+- [x] **Revisión exhaustiva antes de publicar 1.2.2 (7.26):** sin código muerto (claves de idioma, restos de pruebas, scripts y flujo sin uso, archivo vacío), documentación y pruebas al día con las dos variantes de Mac, y las comprobaciones de `.app` convertidas en la herramienta permanente `scripts/mac-app-tools.js`.
 - [x] **Mac en dos versiones y revisión de fallos (v1.2.2):** moderna (macOS 13+, mismo Electron 44 que Windows, `sharp` 0.35.5) y antigua (macOS 10.13–12, Electron 26, `sharp` 0.33.5), cada una un `.dmg` universal;
       GitHub las construye y las prueba en un Mac Intel y uno Apple Silicon (4 pruebas). Windows ya no enseña el menú de ejemplo de Electron (con «Herramientas de desarrollo»); los avisos de permisos de macOS salen
       explicados en 6 idiomas; `sharp` actualizado (0 vulnerabilidades de producción salvo en la antigua); Electron 44 y electron-builder 26 (avisos de obsoleto de 11 a 4, de 20 a 9 en `npm audit`). Ver 7.24 y 7.25.
-- [x] **Mac, terminado (v1.2.0): UN solo instalador para Intel y Apple Silicon, desde macOS 10.13, y la misma interfaz que Windows.**
+- [x] **Mac, terminado (v1.2.0; SUPERADO en 1.2.2: ahora son dos instaladores, ver más arriba): UN solo instalador para Intel y Apple Silicon, desde macOS 10.13, y la misma interfaz que Windows.**
       Ver `DOCUMENTACION-PROYECTO.md`, 7.23:
       - **Un solo `.dmg` universal** (`Compacta-1.2.0-Mac.dmg`): Intel + Apple Silicon juntos; ya no hay `.zip` ni uno por arquitectura.
       - **Llega a macOS 10.13 / 10.14** (lo pedido): el build de Mac usa **Electron 26** (el ultimo que arranca ahi; desde la 27 hace falta
@@ -280,11 +281,11 @@ Ya no está aplazado: se implementó y se verificó todo lo que se puede verific
       misma lista de Macs compatibles para Sierra (10.12) y High Sierra (10.13), así que todo Mac con 10.12 se actualiza gratis a 10.13.6. Soportar 10.12 de
       verdad exigiría un Electron ≤ 21, otro `sharp`/libvips y otro ffmpeg, todo sin parches de seguridad: no se recomienda. Si en la iglesia hay un Mac
       con 10.12 que no se deja actualizar, mirar 7.23 (el «unexpected error» del instalador tiene arreglo).
-- [ ] Firma de Apple (Developer ID, 99 USD/año) y **notarización**: quitaría el aviso de «no verificada». Cómo activarla: 7.23, sección «Si algún
-      día hay certificado». Mientras tanto: ver `LEEME.txt` (en macOS 15 o posterior, Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»).
+- [ ] Firma de Apple (Developer ID, 99 USD/año) y **notarización**: quitaría el aviso de «no verificada». Cómo activarla: 7.23, punto 3 («Firma ad-hoc»: qué
+      cambiar si algún día hay certificado). Mientras tanto: ver `LEEME.txt` (en macOS 15 o posterior, Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»).
 - [ ] **Solo el Mac antiguo** lleva Electron 26 (Chromium 116, 2023, sin parches) y `sharp` 0.33.5 (con una vulnerabilidad alta de libvips/libheif/librsvg): es el precio de llegar a macOS 10.13/10.14, y el Mac moderno/Windows ya están al día. La app no carga contenido de internet
       (todo es local, con CSP `default-src 'self'`), lo que reduce mucho el riesgo; aun así, si algún día se renuncia a macOS < 10.15, subir el Mac a un
-      Electron actual (cambiar la versión en el script `dist:mac`).
+      Electron actual (retirar `dist:mac-legacy`).
 
 ### Localización (idiomas)
 

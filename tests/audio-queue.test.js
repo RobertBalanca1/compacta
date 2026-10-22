@@ -16,7 +16,6 @@ const sharp = require('sharp');
 const { QueueManager } = require('../src/main/queue-manager');
 const { importPaths } = require('../src/main/importer');
 const { saveSettings } = require('../src/main/settings-store');
-const { getInputDir, getOutputDir } = require('../src/main/paths');
 const { findUnprocessedFiles, listBatches, getOutputPathFor, hasOutputFor } = require('../src/main/file-manager');
 const { createDuplicateDetector } = require('../src/main/duplicates');
 const { makeAudio } = require('./helpers/make-audio');

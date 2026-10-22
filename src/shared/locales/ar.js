@@ -104,8 +104,6 @@
     'settings.audioFormat.label': `صيغة الصوت`,
     'settings.audioFormat.hint': `«متوافقة» تعمل على أي جهاز. «Opus» أصغر بنسبة 35% لكنه يحتاج مشغّلًا حديثًا ولا يحتفظ بالغلاف. «FLAC» يصغّر WAV وAIFF إلى النصف مع تطابق كامل بتًّا ببتّ؛ وما هو مضغوط بفقدان أصلًا يُحفظ بصيغة «متوافقة».`,
     'settings.audioFormat.compat': `متوافقة`,
-    'settings.audioFormat.opus': `Opus`,
-    'settings.audioFormat.flac': `FLAC`,
     'settings.output.label': `مجلد الإخراج`,
     'settings.output.hint': `المكان الذي تُحفظ فيه الملفات المعالَجة. ما كان في المجلد السابق لا يُنقل.`,
     'settings.output.change': `تغيير…`,

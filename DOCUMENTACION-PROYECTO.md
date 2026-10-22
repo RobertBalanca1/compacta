@@ -942,7 +942,7 @@ librerías enlazadas, firma), construir los paquetes de Mac desde Linux
 lanzar el ffmpeg incrustado en una app sin firmar, el `tar` de un macOS
 concreto) está SIN PROBAR y se marca como tal abajo.
 
-**Matriz de compatibilidad medida** (cabeceras Mach-O, no suposiciones):
+**Matriz de compatibilidad medida** (cabeceras Mach-O, no suposiciones). **HISTÓRICA, de 1.0.x/1.1.0 (Electron 32): la vigente, con dos variantes de Mac, está en 7.25.**
 
 | Equipo | App y fotos | Videos | Comprimidos |
 |---|---|---|---|
@@ -1643,10 +1643,10 @@ idéntico al fuente, instalador en árabe comprobado bajo wine. **NO verificado:
 «aplazado a propósito», que **el instalador sea UNO solo** para Macs viejos y modernos, que llegue a **macOS 10.14 o anterior** («tal vez 10.12 como mínimo»
 en la iglesia), con la **misma interfaz** que Windows, y que el `.dmg` lo genere GitHub.
 
-**Decisión central: el build de Mac usa Electron 26.6.10; Windows usa el de `package.json` (32 al hacer 1.2.0; subido a 44 en 7.24).** Desde Electron 27 (Chromium 117) macOS 10.13 y 10.14 ya no se
-soportan (documentado por Electron); la 26 es la última que arranca ahí. Se fija en el script `dist:mac` (`-c.electronVersion=26.6.10`), no en `package.json`, así
-`npm test` y Windows siguen con la 32. **Mismo código, misma interfaz:** se pasó todo con los dos motores (unitarias con Node 22 y con el Node 18.16 de Electron 26,
-vía `ELECTRON_RUN_AS_NODE=1`; interfaz con Electron 32 y con Electron 26). Lo único distinto entre sistemas es el hueco para los tres botones de la ventana de Mac
+**Decisión central (1.2.0; desde 1.2.2 solo vale para la variante antigua, ver 7.25): el build de Mac usa Electron 26.6.10; Windows usa el de `package.json` (32 al hacer 1.2.0; hoy 44).** Desde Electron 27 (Chromium 117) macOS 10.13 y 10.14 ya no se
+soportan (documentado por Electron); la 26 es la última que arranca ahí. Se fija en el script `dist:mac-legacy` (`-c.electronVersion=26.6.10`), no en `package.json`, así
+`npm test`, Windows y el Mac moderno siguen con el Electron del `package.json`. **Mismo código, misma interfaz:** se pasó todo con los dos motores (unitarias con Node 22 y con el Node 18.16 de Electron 26,
+vía `ELECTRON_RUN_AS_NODE=1`; interfaz con el Electron de `package.json` y con Electron 26). Lo único distinto entre sistemas es el hueco para los tres botones de la ventana de Mac
 (en Windows están en su propia barra de título).
 
 **Hasta dónde llega, MEDIDO en las cabeceras Mach-O** (`LC_BUILD_VERSION`): Intel → Electron 26: 10.13, `sharp`/libvips: 10.13, ffmpeg x64: 10.13. Apple Silicon →
@@ -1672,7 +1672,7 @@ y otro ffmpeg: no se hizo y no se recomienda.
    sin hueco en pantalla completa vía los eventos `enter/leave-full-screen` → `window:fullscreen`). Probado en español y árabe, ventana normal y mínima (con capturas).
 5. **Menú de Mac** (`src/main/app-menu.js`): en los 6 idiomas (`menu.*`), con «Edición» (sin él ⌘C/⌘V no existen), sin «Herramientas de desarrollo» (solo con `--dev`); se reconstruye al cambiar de idioma. Windows/Linux no cambian.
 6. **Apple Silicon + macOS 11**: el ffmpeg arm64 pide macOS 12, pero el mismo archivo lleva la parte Intel y Rosetta 2 la ejecuta: `ffmpegLaunch()` antepone `arch -x86_64` (cabecera Mach-O leída con
-   `machoArchitectures()`, validada con los binarios reales; Rosetta comprobada con `arch -x86_64 /usr/bin/true`). Sin Rosetta: aviso con el comando de instalación. Ya no se dice «instala la versión para Mac Intel» (no hay otra).
+   `machoArchitectures()` de `src/main/macho.js`, validada con los binarios reales; Rosetta comprobada con `arch -x86_64 /usr/bin/true`). Sin Rosetta: aviso con el comando de instalación. Ya no se dice «instala la versión para Mac Intel» (no hay otra).
 7. **Arrastrar y soltar con Electron 26:** `webUtils.getPathForFile` es de Electron 29; el preload usa `file.path` si no existe (`tests/preload-compat.test.js`).
 8. `⌘V` / `Ctrl+V` se decide con `window.api.platform` (el preload lo expone), no con `navigator.platform`.
 9. **GitHub Actions** (`.github/workflows/build.yml`): construye el `.dmg` y, en un **Mac Intel (`macos-15-intel`) y uno Apple Silicon (`macos-latest`) reales**, lo abre, comprueba las dos arquitecturas, el
@@ -1685,19 +1685,22 @@ y otro ffmpeg: no se hizo y no se recomienda.
 **Resultado REAL en GitHub (repositorio `RobertBalanca1/compacta`, etiqueta `v1.2.0`).** Construido y probado en macOS reales, no simulado: `.dmg` universal + `.exe`; el `.dmg`
 se abrió y se probó en un **Mac Apple Silicon (macOS 26.6.2) y en un Mac Intel**: las dos arquitecturas, macOS mínimo 10.13.0, firma ad-hoc válida, formato HFS+, compresión real
 de foto, HEIC (fabricado con `sips`), vídeo y audio con lo que lleva dentro la app, ventana real cargada y `npm test` completo. **Cuatro fallos que SOLO aparecieron en GitHub** (y su arreglo):
-1. Windows: electron-builder detecta CI e intenta publicar → exige `GH_TOKEN`. Arreglo: `--publish never` en `dist:win` y `dist:mac`.
+1. Windows: electron-builder detecta CI e intenta publicar → exige `GH_TOKEN`. Arreglo: `--publish never` en `dist:win`, `dist:mac` y `dist:mac-legacy`.
 2. Mac: `EEXIST: file already exists, link …heic-worker.js` — en CI electron-builder usa enlaces duros y esos dos archivos (desempaquetados del `.asar`) se procesan dos veces. En local no se ve (no usa
-   enlaces duros fuera de CI; se reproduce con `USE_HARD_LINKS=true CI=true`). Arreglo: `USE_HARD_LINKS=false` en `dist:mac`.
+   enlaces duros fuera de CI; se reproduce con `USE_HARD_LINKS=true CI=true`). Arreglo: `USE_HARD_LINKS=false` en `dist:mac` y `dist:mac-legacy`.
 3. Mac: en un servidor Apple Silicon electron-builder fabrica el `.dmg` en **APFS**, formato arriesgado en macOS 10.13/10.14. Arreglo: el `.dmg` se construye en `macos-15-intel` (HFS+) y el flujo
    comprueba con `diskutil info` que el volumen es HFS+. (Sigue siendo universal.)
 4. `npm test` en Apple Silicon: 2 pruebas fallaban porque el ffmpeg de Apple Silicon no trae el codificador `libopencore_amrnb` ni el muxer `yuv4mpegpipe` y no puede FABRICAR la muestra `.amr` / `.y4m`;
    ahora se omiten en ese caso (si el fallo es otro, siguen fallando). No dice nada de si LEE esos formatos: no comprobado en Apple Silicon.
-Cómo se lee un fallo desde aquí: los registros de GitHub no se pueden descargar desde el entorno de desarrollo; `.github/workflows/test-mac.yml` (manual) deja el detalle de las pruebas en la rama `registro-pruebas-<arm64|intel>`.
+Cómo leer un fallo del flujo desde el entorno de desarrollo: los registros de GitHub (`/actions/jobs/<id>/logs`) redirigen a un servidor que ese entorno no alcanza y las anotaciones solo dicen «Process completed with exit code 1». Con un token
+(Actions: lectura) se puede usar un paso temporal `if: always()` que haga `git push -f` de las últimas líneas del registro a una rama `registro-…` y leerla con la API de contenidos; se usó así y luego se quitó (rama y paso).
 
 **Cómo se verificó (repetible desde Linux).**
-- `npm run predist:mac` (las dos variantes de `sharp` y los dos ffmpeg: la segunda instalación con `--cpu` NO borra la primera) → `npx electron-builder --mac dir --universal -c.electronVersion=26.6.10` construye los dos
-  paquetes y se detiene en la fusión (`@electron/universal` solo corre en darwin). La fusión se ejecuta a mano con un `lipo` falso-pero-real (`apt install llvm`; `ln -s /usr/bin/llvm-lipo-18 /usr/local/bin/lipo`) y
-  `Object.defineProperty(process,'platform',{value:'darwin'})` antes de `makeUniversalApp({ mergeASARs: true, … })`. Resultado: ejecutable, Electron Framework y ffmpeg con x86_64 + arm64, mínimos 10.13/11.0 (ffmpeg arm64: 12.0), `.asar` con `src/` idéntico al fuente.
+- `npm run predist:mac` (las dos variantes de `sharp` y los dos ffmpeg: la segunda instalación con `--cpu` NO borra la primera) → `npx electron-builder --mac dir --universal` construye los dos
+  paquetes y se detiene en la fusión (`@electron/universal` solo corre en darwin). `node scripts/mac-app-tools.js merge` hace esa fusión con las mismas opciones que electron-builder (necesita un `lipo`:
+  `apt install llvm; ln -s /usr/bin/llvm-lipo-18 /usr/local/bin/lipo`) y `node scripts/mac-app-tools.js check` lista cada ejecutable y librería del `.app` con sus arquitecturas y su macOS mínimo, y falla si algo pide
+  más que lo declarado. (Para la variante antigua: `predist:mac-legacy` y `-c.electronVersion=26.6.10 -c.mac.minimumSystemVersion=10.13.0`, ver 7.25.) Resultado en 1.2.0: ejecutable, Electron Framework y ffmpeg con x86_64 + arm64,
+  mínimos 10.13/11.0 (ffmpeg arm64: 12.0), `.asar` con `src/` idéntico al fuente. El lector de cabeceras es `src/main/macho.js` (probado con binarios Mach-O fabricados: `tests/macho.test.js`, `tests/mac-app-tools.test.js`).
 - `scripts/verify-packaged-engine.js` se probó aquí contra el paquete de Linux con el Electron 26 como motor (7/7).
 - Nota: en las pruebas de interfaz, la plataforma FINGIDA del proceso principal (`process.platform = 'darwin'`) se propaga al preload de las ventanas que se creen mientras tanto (no es la real).
 
@@ -1710,7 +1713,7 @@ Electron 26 (Chromium 116, 2023) no recibe parches de seguridad; la app no carga
 
 **Se pidió:** que no quede ningún aviso ni cosa obsoleta, ni en local ni en GitHub, y optimizar. Resultado y lo que NO se pudo:
 
-**Subido (probado con todo):** `electron-builder` 25.1.8 → **26.15.3** y `electron` 32.3.3 → **44.9.1** (Windows y desarrollo; el Mac sigue fijado a 26.6.10 en `dist:mac`).
+**Subido (probado con todo):** `electron-builder` 25.1.8 → **26.15.3** y `electron` 32.3.3 → **44.9.1** (Windows, desarrollo y Mac moderno; solo el Mac antiguo sigue fijado a 26.6.10, en `dist:mac-legacy`).
 Avisos «npm warn deprecated»: de **11 a 4**; vulnerabilidades de `npm audit`: de **20 a 9**. Los 4 avisos que quedan los trae la propia última versión de electron-builder
 (`inflight` y `glob@7` vía `@electron/asar`, `boolean` vía `@electron/get`, `rimraf@2` vía `electron-winstaller`): no se pueden quitar sin romper la herramienta (probado: un `overrides`
 de `rimraf` solo cambiaba un aviso por otro). Son herramientas de CONSTRUCCIÓN, no viajan en la app.
@@ -1719,9 +1722,9 @@ de `rimraf` solo cambiaba un aviso por otro). Son herramientas de CONSTRUCCIÓN,
 - 8 vulnerabilidades «moderate» (`sprintf-js` ≤ 1.1.3, DoS por precisión sin límite, vía `roarr` ← `global-agent` ← `@electron/get`): **no existe ninguna versión corregida** de `sprintf-js`; solo
   afecta al registro de las herramientas de construcción. `npm audit fix` no puede arreglarlo (propone una versión de electron-builder anterior a la que ya está).
 - (ACTUALIZADO en 1.2.2, 7.25: resuelta en Windows y Mac moderno con `sharp` 0.35.5; solo queda en el Mac antiguo.) 1 vulnerabilidad «high» en `sharp` 0.33.5 (CVEs de libvips, libheif y librsvg). Se arregla en `sharp` 0.35.5, pero esa versión exige **Node ≥ 20.9 y macOS ≥ 10.15 en Intel** (medido en sus
-  binarios: libvips y `.node` con mínimo 10.15) y Electron 26 trae Node 18.16: subirla rompe justo macOS 10.13/10.14, que es un requisito. Por eso `sharp` queda en ^0.33.5 en TODAS las
-  plataformas (así Mac y Windows se comportan igual). Riesgo real: solo al procesar una imagen maliciosa que la persona misma elija; la app es local y no abre nada de internet. Si algún día se
-  renuncia a macOS < 10.15, subir `sharp` a 0.35.x y el Mac a un Electron actual resuelve esa alerta (y la de Chromium 116).
+  binarios: libvips y `.node` con mínimo 10.15) y Electron 26 trae Node 18.16: subirla rompe justo macOS 10.13/10.14, que es un requisito. Por eso, al hacer 1.2.0, `sharp` se dejó en 0.33.5 en TODAS las
+  plataformas. **Desde 1.2.2 (7.25) solo la variante antigua la conserva.** Riesgo real en esa variante: solo al procesar una imagen maliciosa que la persona misma elija; la app es local y no abre nada de internet. Si algún día se
+  renuncia a macOS < 10.15, desaparece la variante antigua y con ella esa alerta (y la de Chromium 116).
 
 **Cambios necesarios por las versiones nuevas (los habría roto el siguiente build en GitHub):**
 1. `@electron/universal` 2.0.3 (de electron-builder 26) comprueba también los binarios dentro de `app.asar.unpacked`: las librerías de `sharp` de las DOS arquitecturas son idénticas en los dos
@@ -1770,7 +1773,7 @@ Un Mac con macOS < 13 que intente abrir la versión normal recibe del Finder el 
 `>=0.33.5 <0.36.0` para ser coherente con las dos instalaciones; `package-lock.json` fija la 0.35.5 (Windows, desarrollo y Mac moderno). La detección de macOS 11 en Apple Silicon (Rosetta para el ffmpeg, 7.23) solo
 puede ocurrir en la variante antigua.
 
-**Pruebas con cada pareja (Linux).** Moderna/Windows: Node 22 + `sharp` 0.35.5 + Electron 44: 447 pasan, 0 fallan (11 omitidas). Antigua: Node 18.16 (Electron 26 como Node) + `sharp` 0.33.5: 446 pasan y 1 falló (mi propia
+**Pruebas con cada pareja (Linux), medición INTERMEDIA; el resultado final está en 7.26.** Moderna/Windows: Node 22 + `sharp` 0.35.5 + Electron 44: 447 pasan, 0 fallan (11 omitidas). Antigua: Node 18.16 (Electron 26 como Node) + `sharp` 0.33.5: 446 pasan y 1 falló (mi propia
 prueba de configuración, que aún describía «un solo Mac»; ya actualizada). Las dos fusiones universales se construyen y se inspeccionan aquí (mínimos: moderna 13.0.0 con `sharp` 10.15/11.0 y ffmpeg 10.13/12.0; antigua 10.13.0).
 El flujo de GitHub construye ambas, las abre en un Mac Intel y uno Apple Silicon reales (4 pruebas) y comprueba además el mínimo esperado de cada una, las claves de permisos y la sintaxis de los textos con `plutil -lint`.
 
@@ -1790,8 +1793,8 @@ integrados con hueco en la barra), menú (ninguno ↔ menú propio en 6 idiomas 
 5. Versión: `package.json` y `package-lock.json` pasan a **1.2.2** (la 1.2.0 ya estaba publicada en GitHub con el `.dmg` único; no existe 1.2.1).
 
 **Resultado final de las pruebas con el código de 1.2.2 (Linux, instalación limpia con `npm ci` entre una pareja y otra):**
-- Pareja moderna (Node 22 + `sharp` 0.35.5): 464 pruebas, 453 pasan, 11 omitidas (sin `rar`), 0 fallan, 0 avisos de obsolescencia. Interfaz 47/47 con Electron 44, idiomas 17/17.
-- Pareja antigua (Node 18.16 de Electron 26 + `sharp` 0.33.5): 453 pasan, 0 fallan, 0 avisos propios (solo el del ejecutor de pruebas de Node 18, ver 7.24). Interfaz 47/47 con Electron 26, idiomas 17/17.
+- Pareja moderna (Node 22 + `sharp` 0.35.5), antes de la revisión exhaustiva de 7.26: 464 pruebas, 453 pasan, 11 omitidas (sin `rar`), 0 fallan, 0 avisos de obsolescencia. Interfaz 47/47 con Electron 44, idiomas 17/17.
+- Pareja antigua (Node 18.16 de Electron 26 + `sharp` 0.33.5), idem: 453 pasan, 0 fallan, 0 avisos propios (solo el del ejecutor de pruebas de Node 18, ver 7.24). Interfaz 47/47 con Electron 26, idiomas 17/17.
 - Paquete real de Linux (arranca, descomprime ZIP, comprime vídeo y audio, decodifica HEIC) y verificador del paquete 7/7 con Electron 44 como motor.
 - Las dos variantes de Mac: construidas, fusionadas e inspeccionadas (moderna: `LSMinimumSystemVersion` 13.0.0; antigua: 10.13.0; las dos con Intel + Apple Silicon, seis `InfoPlist.strings` y las claves de permisos).
 - Instalador de Windows 1.2.2 (Electron 44.9.1, solo `sharp-win32-x64`, sin `sharp-wasm32`): construido sin ningún aviso y con `src/` idéntico al fuente.
@@ -1802,6 +1805,39 @@ imprime su propio `[SharpElectronLinux] Warning: Binaries provided by Electron f
 
 **Lo que sigue SIN poder afirmarse.** Nada de esto se ha ejecutado en macOS 10.13–12 ni en Windows real. La variante antigua se ha probado (Linux, Node 18) y construido, y GitHub la prueba en macOS reciente, pero no en un
 macOS antiguo; el motor es de 2023 y puede fallar algo propio de esos sistemas. Windows 7/8 no se soportan (Electron 23 en adelante); Windows 10 o superior.
+
+### 7.26 — Revisión exhaustiva antes de publicar 1.2.2: código muerto, desajustes y estado final
+
+**Se pidió:** revisar absolutamente todo (Windows, Mac moderno y Mac antiguo) sin que se haya perdido nada, sin desajustes, sin código muerto ni obsoleto, sin arreglar por un lado y romper por otro, sin código espagueti.
+Método: diff contra la 1.1.0 original, ESLint 9 (instalado FUERA del proyecto, `no-undef`, `no-unused-vars`, `no-unreachable`, etc., sobre `src`, `scripts` y `tests`), búsqueda de claves de idioma y clases CSS sin uso, cruce de
+`package.json` ↔ flujo ↔ pruebas ↔ documentación, y repetición completa de las pruebas con cada pareja de motor.
+
+**Código de la app (diff contra 1.1.0).** Los cambios en `src/` son los previstos y nada más: menú, ventana de Mac y pantalla completa, `platform` en el preload, ffmpeg (Rosetta), y dos extracciones mecánicas sin cambio de lógica
+(`processEntry` en `zip-extractor.js`, `compareWith` en `duplicates.js`). ESLint: **ninguna variable sin definir ni sin usar en `src/` ni en `scripts/`** (lo que demuestra que las extracciones no dejaron nada colgando). Los únicos avisos que quedan son
+falsos positivos conocidos y deliberados: `self`/`document` en `src/shared/` (módulos que corren en Node y en el navegador a la vez) y la expresión regular de caracteres de control de `file-names.js` (filtra nombres inválidos de Windows).
+
+**Código muerto encontrado y eliminado** (casi todo venía de la 1.1.0):
+1. Claves `settings.audioFormat.opus` y `.flac` en los 6 idiomas: «Opus» y «FLAC» son nombres propios escritos en el HTML y nunca las usaron.
+2. Restos en pruebas: `fsSync` y `pcmMd5` (`audio-efficiency`), un `require` entero (`audio-queue`), `path` (`helpers/make-audio`), el parámetro `color` (`sibling-cache`), un parámetro `t` y un `let` que debía ser `const` (`ui-test-electron`),
+   y 7 escapes innecesarios en cadenas (sin cambiar su valor).
+3. Un archivo vacío (0 bytes) `codigo-fuente/LEEME.txt`, y dos scripts de `package.json` sin uso ni documentación: `dist:all` y su `predist:all` (el `.dmg` solo se genera en un Mac: no se puede encadenar con el resto).
+4. El flujo auxiliar `.github/workflows/test-mac.yml` (solo servía para diagnosticar; nada lo usaba) y los restos `tee build.log` / `set -o pipefail` del flujo principal, que ya no leían nada.
+5. Sin uso confirmado: ninguna clase CSS (las tres `queue-item--…` se construyen con el estado de cada trabajo), ninguna clave de idioma más (los plurales `.one/.other` y `menu.*` se construyen dinámicamente), ninguna dependencia.
+
+**Desajustes entre código, pruebas y documentación corregidos** (frases que describían el estado ANTERIOR como si fuera el actual): el motor fijado en `dist:mac` (ahora solo en `dist:mac-legacy`); `sharp` 0.33.5 «en todas las plataformas» (ahora solo la
+variante antigua); «un solo instalador» en limitaciones, README, PRUEBAS-EN-MAC y MEJORAS; la tabla de compatibilidad de 7.15 («macOS 10.14 o anterior: no») marcada como histórica; los comandos de la guía de continuación (13.4); la referencia a un apartado
+que no existía («Si algún día hay certificado» → 7.23, punto 3); y los recuentos de pruebas.
+
+**Para que lo verificado no dependa de scripts sueltos:** el lector de cabeceras Mach-O sale de `ffmpeg.js` a `src/main/macho.js` (sin duplicar) y las comprobaciones que antes se hacían con programas en `/tmp` son ahora `scripts/mac-app-tools.js`
+(`check` y `merge`, ver 7.23) con 10 pruebas sobre binarios Mach-O fabricados (`tests/helpers/make-macho.js`). Dio los mismos números que las mediciones anteriores hechas con otro programa. El flujo de GitHub lo ejecuta también en Macs reales y lo contrasta con `lipo`.
+
+**Estado final de las pruebas (código de 1.2.2, instalación limpia entre una pareja y otra):**
+- Pareja moderna (Node 22 + `sharp` 0.35.5): 474 pruebas, 463 pasan, 11 omitidas (sin `rar`), 0 fallan, 0 avisos de obsolescencia. Interfaz 47/47 con Electron 44, idiomas 17/17, auditoría de código limpia.
+- Pareja antigua (Node 18.16 de Electron 26 + `sharp` 0.33.5): 463 pasan, 0 fallan, 0 avisos propios (solo el del ejecutor de pruebas de Node 18, ver 7.24). Interfaz 47/47 con Electron 26, idiomas 17/17.
+- Mac moderno y Mac antiguo: construidos, fusionados y revisados con `mac-app-tools` (moderno: macOS 13.0.0 declarado, 19 piezas; antiguo: 10.13.0, 20 piezas; en las dos, Intel + Apple Silicon y `src/` del `.asar` idéntico al fuente).
+- Paquete de Linux (arranca, ZIP, vídeo, audio, HEIC) y verificador del paquete 7/7 con Electron 44. Instalador de Windows 1.2.2 (Electron 44.9.1, solo `sharp-win32-x64`) sin avisos y con `src/` idéntico al fuente.
+
+**Lo que esta revisión NO puede asegurar:** lo mismo que en 7.25 (nada se ha ejecutado en macOS 10.13–12 ni en Windows real; GitHub todavía no ha corrido el flujo con estos cambios) y, por su naturaleza, cualquier fallo que solo se vea con un Mac o un Windows de verdad.
 
 ## 8. Funciones agregadas sobre la marcha
 
@@ -1939,15 +1975,15 @@ El ffmpeg de cada plataforma lo prepara `scripts/prepare-ffmpeg.js` (en
 desde Linux ver la receta de la sección 13.
 
 Ver `README.md` para instrucciones completas de desarrollo y compilación
-(`npm start`, `npm test`, `npm run dist:win`, `npm run dist:mac`, y el flujo
+(`npm start`, `npm test`, `npm run dist:win`, `npm run dist:mac`, `npm run dist:mac-legacy`, y el flujo
 de GitHub Actions incluido en `.github/workflows/build.yml`, que genera el `.dmg`
 único de Mac y el `.exe` en la nube, y PRUEBA el `.dmg` en Macs reales; ver 7.23).
 
 ## 12. Limitaciones conocidas
 
 - El `.dmg` de macOS no se puede generar desde Linux/Windows (la fusión Intel + Apple Silicon necesita `lipo` y el `.dmg` `hdiutil`): se genera en GitHub
-  Actions (ver 7.23). Desde Linux sí se pueden construir y fusionar los `.app` para inspeccionarlos.
-- **Mac:** un solo instalador, macOS 10.13 o posterior en Intel y 11 o posterior en Apple Silicon (7.23). macOS 10.12 o anterior no se soporta (el hardware que corre
+  Actions (ver 7.23 y 7.25). Desde Linux sí se pueden construir y fusionar los `.app` para inspeccionarlos.
+- **Mac:** dos instaladores, moderno (macOS 13 o posterior) y antiguo (macOS 10.13 a 12; Intel desde 10.13, Apple Silicon desde 11), ver 7.25. macOS 10.12 o anterior no se soporta (el hardware que corre
   10.12 puede actualizarse gratis a 10.13). Nada específico de Mac se ha ejecutado en un Mac real aparte de lo que hace GitHub (macOS reciente). Sin certificado de Apple,
   la primera vez hay que abrirla con «Abrir» / «Abrir igualmente». RAR5 puede no abrirse con el `tar` de un macOS antiguo (respaldo con 7-Zip; ver 7.15).
 - Subtítulos en archivo aparte: desde la 1.0.9 viajan con el video (7.16). Un
@@ -1974,6 +2010,7 @@ Esta sección existe porque el trabajo se ha ido pasando entre conversaciones
 y los mismos errores se repiten si no están escritos. Léela entera.
 
 ### 13.1 Estado actual (v1.2.2)
+- **Revisión exhaustiva previa a publicar (7.26):** código muerto eliminado, desajustes de documentación corregidos, herramienta permanente `scripts/mac-app-tools.js`, pruebas completas con cada pareja de motor.
 - **1.2.2 (7.25): dos instaladores de Mac** (moderno macOS 13+ con el mismo motor que Windows; antiguo macOS 10.13–12 con Electron 26), paridad Windows↔Mac revisada, menú de ejemplo quitado en Windows,
   avisos de permisos de macOS en 6 idiomas, `sharp` 0.35.5 salvo en el Mac antiguo.
 - **1.2.0 (7.23): Mac terminado.** Un solo `.dmg` universal (Electron 26, desde macOS 10.13), botones de ventana, menú propio, Rosetta para Apple Silicon con macOS 11,
@@ -1992,7 +2029,7 @@ y los mismos errores se repiten si no están escritos. Léela entera.
   interfaz en Electron real (incluye arrastre real de la vista previa, ventana de 760×520 y vista previa de video), el paquete real de Linux, y los videos contra el
   `ffmpeg.exe` exacto del instalador bajo wine.
 - **NO verificado: ejecutar el instalador en un Windows real; todo lo que sea
-  ejecutar en un Mac real** (ver 7.15 y 7.23; GitHub prueba el `.dmg` en un Mac Intel y uno Apple Silicon recientes, no en macOS 10.13–10.15).
+  ejecutar en un Mac real** (ver 7.15, 7.23 y 7.25; GitHub prueba los dos `.dmg` en un Mac Intel y uno Apple Silicon recientes, no en macOS 10.13–12).
   Ante un reporte de un Mac, es lo primero que hay que sospechar.
 
 ### 13.2 Preferencias de la persona (importantes)
@@ -2041,8 +2078,11 @@ npm run build:linux-dir && xvfb-run -a npm run test:packaged -- --no-sandbox    
 npm run dist:win                                                # instalador Windows (~5 min)
 COMPACTA_SHOTS=/tmp/shots xvfb-run -a npx electron --no-sandbox tests/ui-i18n-electron.js   # idiomas (y capturas para MIRAR)
 xvfb-run -a npx electron --no-sandbox --force-device-scale-factor=2 tests/ui-test-electron.js   # alta densidad simulada
-npm run predist:mac && npx electron-builder --mac dir --universal -c.electronVersion=26.6.10   # los dos .app de Mac (la fusion: ver 7.23)
-ELECTRON_RUN_AS_NODE=1 /ruta/electron26 --test tests/*.test.js                 # pruebas con el Node 18 del Mac
+npm run predist:mac && npx electron-builder --mac dir --universal                                    # los dos .app del Mac MODERNO (la fusion: ver 7.23)
+npm run predist:mac-legacy && npx electron-builder --mac dir --universal -c.electronVersion=26.6.10 -c.mac.minimumSystemVersion=10.13.0   # los del ANTIGUO
+node scripts/mac-app-tools.js merge && node scripts/mac-app-tools.js check   # (Linux, con lipo) fusiona los dos paquetes y revisa arquitecturas y macOS minimo de cada pieza
+npm ci   # entre una pareja de sharp y otra (0.35.5 <-> 0.33.5): si no, sharp cae al respaldo wasm y Node avisa (7.25)
+ELECTRON_RUN_AS_NODE=1 /ruta/electron26 --test tests/*.test.js                 # pruebas con el Node 18 del Mac antiguo (con sharp 0.33.5)
 ELECTRON_RUN_AS_NODE=1 <motor> scripts/verify-packaged-engine.js <carpeta resources>   # comprime de verdad con el paquete
 COMPACTA_FFMPEG_PATH=/tmp/ffwine.sh node --test tests/video-optimizer.test.js   # video con ffmpeg.exe
 ```
@@ -2133,7 +2173,7 @@ ojo (así se encontró el deslizador demasiado corto).
 ### 13.7 Mapa de pruebas
 `tests/*.test.js` (unitarias; `node --test`), `tests/ui-test-electron.js`
 (interfaz real), `tests/packaged-smoke-test-electron.js` (paquete real),
-`tests/smoke-test-electron.js` (arranque), `tests/ui-i18n-electron.js` (idiomas, 1.1.0), `tests/zip-password.test.js` y `tests/import-merge.test.js` (1.1.0, 7.22), `tests/app-menu.test.js`, `tests/preload-compat.test.js` y `tests/mac-build-config.test.js` (1.2.0, 7.23), y `tests/helpers/` con
+`tests/smoke-test-electron.js` (arranque), `tests/ui-i18n-electron.js` (idiomas, 1.1.0), `tests/zip-password.test.js` y `tests/import-merge.test.js` (1.1.0, 7.22), `tests/app-menu.test.js`, `tests/preload-compat.test.js`, `tests/mac-build-config.test.js`, `tests/macho.test.js` y `tests/mac-app-tools.test.js` (1.2.0 y 1.2.2, 7.23 y 7.25), y `tests/helpers/` con
 generadores de ZIP (`make-zip.js`), videos reales (`make-video.js`,
 `make-video-formats.js`, con subtítulos incluidos) y comprimidos reales
 (`make-archive.js`: usa `tar`, `7z` y `rar` si están instalados; `make-heic.js`: HEIC reales con `pillow-heif`; `make-encrypted-zip.js`: ZIP cifrados reales con `zip` y `pyzipper` (`pip install pyzipper --break-system-packages`); si falta

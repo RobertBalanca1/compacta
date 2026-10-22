@@ -17,14 +17,12 @@
     "test:packaged": "electron tests/packaged-smoke-test-electron.js",
     "postinstall": "electron-builder install-app-deps",
     "predist:mac": "npm install --no-save --os=darwin --cpu=x64 sharp@^0.35.5 && npm install --no-save --os=darwin --cpu=arm64 sharp@^0.35.5 && node scripts/prepare-ffmpeg.js darwin x64 && node scripts/prepare-ffmpeg.js darwin arm64",
-    "predist:win": "npm install --no-save --os=win32 --cpu=x64 sharp@^0.35.5 && node scripts/prepare-ffmpeg.js win32 x64",
-    "predist:all": "npm run predist:mac && npm run predist:win",
     "dist:mac": "USE_HARD_LINKS=false electron-builder --mac --universal --publish never",
-    "dist:win": "electron-builder --win --x64 --publish never",
-    "dist:all": "npm run dist:mac && npm run dist:mac-legacy && npm run dist:win",
-    "audit": "node scripts/audit-code.js",
     "predist:mac-legacy": "npm install --no-save --os=darwin --cpu=x64 sharp@0.33.5 && npm install --no-save --os=darwin --cpu=arm64 sharp@0.33.5 && node scripts/prepare-ffmpeg.js darwin x64 && node scripts/prepare-ffmpeg.js darwin arm64",
-    "dist:mac-legacy": "USE_HARD_LINKS=false electron-builder --mac --universal --publish never -c.electronVersion=26.6.10 -c.mac.minimumSystemVersion=10.13.0 -c.mac.artifactName='Compacta-${version}-Mac-antiguo.${ext}'"
+    "dist:mac-legacy": "USE_HARD_LINKS=false electron-builder --mac --universal --publish never -c.electronVersion=26.6.10 -c.mac.minimumSystemVersion=10.13.0 -c.mac.artifactName='Compacta-${version}-Mac-antiguo.${ext}'",
+    "predist:win": "npm install --no-save --os=win32 --cpu=x64 sharp@^0.35.5 && node scripts/prepare-ffmpeg.js win32 x64",
+    "dist:win": "electron-builder --win --x64 --publish never",
+    "audit": "node scripts/audit-code.js"
   },
   "dependencies": {
     "libheif-js": "1.23.5",

@@ -92,8 +92,6 @@
     'settings.audioFormat.label': `Định dạng âm thanh`,
     'settings.audioFormat.hint': `“Tương thích” phát được trên mọi thiết bị. “Opus” nhẹ hơn 35% nhưng cần trình phát hiện đại và không giữ ảnh bìa. “FLAC” giảm một nửa WAV và AIFF, giống hệt từng bit; những tệp vốn đã bị suy hao sẽ lưu theo “Tương thích”.`,
     'settings.audioFormat.compat': `Tương thích`,
-    'settings.audioFormat.opus': `Opus`,
-    'settings.audioFormat.flac': `FLAC`,
     'settings.output.label': `Thư mục đầu ra`,
     'settings.output.hint': `Nơi lưu các tệp đã xử lý. Những gì đã có trong thư mục trước đó sẽ không bị di chuyển.`,
     'settings.output.change': `Thay đổi…`,

@@ -6,7 +6,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs/promises');
-const fsSync = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -28,7 +27,6 @@ async function tmpDir() {
 }
 
 const md5 = (file, extra = ['-map', '0:a', '-c', 'copy']) => spawnSync(getFfmpegPath(), ['-hide_banner', '-loglevel', 'error', '-i', file, ...extra, '-f', 'md5', '-'], { encoding: 'utf8' }).stdout.trim();
-const pcmMd5 = (file) => md5(file, ['-map', '0:a:0', '-f', 's16le', '-c:a', 'pcm_s16le']).replace(/^MD5=/, '');
 
 // ------------------------------------------------------------------ analisis de canales (puro)
 

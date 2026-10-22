@@ -26,8 +26,8 @@ Hay **dos instaladores** (cada uno un solo `.dmg` universal, Intel + Apple Silic
 `Compacta-1.2.2-Mac-antiguo.dmg` (macOS 10.13 a 12, motor Electron 26; puede tener algún problema que la normal no tiene). Ninguno se puede generar fuera de un Mac. Dos caminos:
 
 - **GitHub Actions** (recomendado): subir `codigo-fuente/` a un repositorio de GitHub y ejecutar el flujo `.github/workflows/build.yml`
-  (pestaña Actions → Construir instaladores → Run workflow). Genera el `.dmg`, lo prueba en un Mac Intel y uno Apple Silicon reales, y
-  lo deja en «Artifacts» (o en «Releases» si se lanza con una etiqueta `v…`).
+  (pestaña Actions → Construir instaladores → Run workflow). Genera los dos `.dmg`, los prueba en un Mac Intel y uno Apple Silicon reales, y
+  los deja en «Artifacts» (o en «Releases» si se lanza con una etiqueta `v…`).
 - **En un Mac**: `cd codigo-fuente && npm ci && npm run dist:mac` (o `npm run dist:mac-legacy`) (descarga las librerías de imagen y el ffmpeg de las dos
   arquitecturas; necesita internet).
 
@@ -43,26 +43,26 @@ notarizada por Apple). Es lo esperado:
 
 ## 3. Qué se verificó SIN Mac (y qué no)
 
-Verificado (repetible: `DOCUMENTACION-PROYECTO.md`, 7.23):
+Verificado (repetible: `DOCUMENTACION-PROYECTO.md`, 7.23 y 7.25), en las DOS variantes (moderna y antigua):
 
 | Qué | Resultado |
 |---|---|
-| Un solo `.app` con las dos arquitecturas | Ejecutable, Electron y ffmpeg son «fat» (x86_64 + arm64), fusionados con la misma herramienta (`@electron/universal`) que usa electron-builder |
-| macOS mínimo declarado | `LSMinimumSystemVersion` = 10.13.0 |
-| Mínimos medidos en las cabeceras Mach-O | Intel: Electron 26 → 10.13, `sharp`/libvips → 10.13, ffmpeg → 10.13. Apple Silicon: Electron 26 → 11.0, `sharp` → 11.0, ffmpeg → **12.0** (cubierto con Rosetta en macOS 11) |
-| Menú, hueco de los botones, pantalla completa | Probados en la interfaz real de Electron (simulando Mac): 47/47 con Electron 44 (Windows) y con Electron 26 (Mac) |
-| Las pruebas del proyecto con el Node del Mac | Pasan con Node 22 y con el Node 18.16 de Electron 26 |
-| `.asar` del `.dmg` | Su `src/` es idéntico al del código fuente |
+| Un solo `.app` por variante con las dos arquitecturas | Ejecutable, Electron y ffmpeg son «fat» (x86_64 + arm64), fusionados con la misma herramienta (`@electron/universal`) que usa electron-builder |
+| macOS mínimo declarado (`LSMinimumSystemVersion`) | Moderna: 13.0.0. Antigua: 10.13.0 |
+| Mínimos medidos en las cabeceras Mach-O | **Moderna** (Electron 44, `sharp` 0.35): Electron 13.0 en Intel y Apple Silicon; `sharp`/libvips 10.15 (Intel) y 11.0 (Apple Silicon); ffmpeg 10.13 y 12.0. **Antigua** (Electron 26, `sharp` 0.33.5): Intel todo 10.13; Apple Silicon 11.0 salvo ffmpeg **12.0** (cubierto con Rosetta en macOS 11) |
+| Menú, hueco de los botones, pantalla completa | Probados en la interfaz real de Electron (simulando Mac): 47/47 con Electron 44 (Mac moderno y Windows) y con Electron 26 (Mac antiguo) |
+| Las pruebas del proyecto con el motor de cada variante | Moderna: Node 22 + `sharp` 0.35.5. Antigua: el Node 18.16 de Electron 26 + `sharp` 0.33.5. Las dos pasan completas |
+| `.asar` de cada `.dmg` | Su `src/` es idéntico al del código fuente |
 
 **NO verificado** (hay que verlo en un Mac real; GitHub cubre parte, ver la sección 3 bis): que macOS deje ejecutar el ffmpeg incrustado,
 que `/usr/bin/tar` abra cada formato en cada versión de macOS, el aspecto real de los botones de la ventana sobre la barra, notificaciones,
 Dock, diálogos nativos, permisos de Documentos/Escritorio, y **todo en macOS 10.13–10.15 y en Apple Silicon con macOS 11 (Rosetta)**.
 
-### 3 bis. Lo que prueba GitHub en cada ejecución (en un Mac Intel y uno Apple Silicon reales, macOS reciente)
+### 3 bis. Lo que prueba GitHub en cada ejecución (cada una de las dos variantes, en un Mac Intel y uno Apple Silicon reales: 4 pruebas, macOS reciente)
 
 Abre el `.dmg` y copia la app; comprueba las dos arquitecturas y el macOS mínimo; `codesign --verify --deep --strict` y firma ad-hoc;
 **comprime de verdad una foto JPG, un HEIC (fabricado por el propio macOS), un vídeo y un audio** con el Electron, `sharp`, libvips,
-libheif y ffmpeg que lleva la app; abre la app real y comprueba que la ventana carga (guarda una captura); y pasa `npm test`. Si algo de
+libheif y ffmpeg que lleva la app; abre la app real y comprueba que la ventana carga (guarda una captura); y (en la variante moderna) pasa `npm test`. Si algo de
 eso falla, el flujo se pone en rojo y dice qué.
 
 ---
@@ -271,13 +271,14 @@ Anotar el modelo de Mac, el tiempo total y si el Mac se calentó o se puso lento
 | Nombres Unicode (NFC/NFD) | `src/main/processor/formats.js` → `foldName()` |
 | Barra de título, botones y pantalla completa | `src/main/index.js` (`titleBarStyle`, `trafficLightPosition`, `enter/leave-full-screen`), `preload.js` y `styles.css` (`html[data-platform='mac'] .topbar`) |
 | Menú de la app | `src/main/app-menu.js` (y `menu.*` en `src/shared/locales/`) |
-| Un solo `.dmg` universal, firma ad-hoc | `package.json` → `build.mac` y `dist:mac`; `scripts/mac-sign.js` |
+| Dos `.dmg` universales (moderno y antiguo), firma ad-hoc | `package.json` → `build.mac`, `dist:mac` y `dist:mac-legacy`; `scripts/mac-sign.js` |
 | Prueba del `.dmg` en Macs reales | `.github/workflows/build.yml` y `scripts/verify-packaged-engine.js` |
+| Revisión de un `.app` (arquitecturas y macOS mínimo de cada pieza) y fusión Intel + Apple Silicon desde Linux | `scripts/mac-app-tools.js` (`check` / `merge`) y `src/main/macho.js` |
 | Rebote del Dock | `src/main/notifier.js` |
 | Reabrir desde el Dock / no salir al cerrar | `src/main/index.js` (`activate`, `window-all-closed`) |
 | Texto "⌘V" en vez de "Ctrl+V" | `src/renderer/js/app.js` (`window.api.platform`) |
 | Detección de iCloud Drive | `src/main/paths.js` |
-| Librerías de imagen de las dos arquitecturas | `package.json` → script `predist:mac` |
+| Librerías de imagen de las dos arquitecturas | `package.json` → scripts `predist:mac` (`sharp` 0.35) y `predist:mac-legacy` (`sharp` 0.33.5) |
 | Clonado de archivos en APFS | `src/main/importer.js` (`COPYFILE_FICLONE`) |
 
 ---
@@ -289,9 +290,9 @@ Anotar el modelo de Mac, el tiempo total y si el Mac se calentó o se puso lento
 3. **RAR5 en macOS antiguo** (E2).
 4. **Permisos de macOS** (Documentos, Escritorio, volúmenes externos): un permiso denegado produce errores de escritura (B4, F3).
 5. **Apple Silicon + macOS 11 por Rosetta** (C2): lógica probada, sin ejecutar en ese sistema.
-6. **macOS 10.13–10.15**: Electron 26 y las librerías declaran 10.13, pero GitHub no ofrece ese sistema; nadie lo ha ejecutado aún.
+6. **macOS 10.13–12 (variante antigua)**: Electron 26 y las librerías declaran 10.13, pero GitHub no ofrece ese sistema; nadie lo ha ejecutado aún.
 7. **Teclas**: `Espacio` ignora ⌘/⌥, pero no se ha probado ⌥+flecha con VoiceOver (F5).
-8. **Electron 26 en macOS muy reciente** (macOS 26 «Tahoe»): sin los parches de Electron de 2025; Apple lo mitigó en el propio sistema (26.2). Si se nota
+8. **Electron 26 (solo la variante antigua) en macOS muy reciente** (macOS 26 «Tahoe»): sin los parches de Electron de 2025; Apple lo mitigó en el propio sistema (26.2). Si se nota
    lentitud de la ventana con el sistema reciente, es el primer sospechoso (ver 7.23).
 
 ---

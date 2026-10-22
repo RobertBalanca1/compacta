@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { videoEngineProblem, getFfmpegPath, ffmpegLaunch, machoArchitectures, needsRosetta } = require('../src/main/processor/ffmpeg');
+const { videoEngineProblem, getFfmpegPath, ffmpegLaunch, needsRosetta } = require('../src/main/processor/ffmpeg');
 
 test('Apple Silicon con macOS 11 (Darwin 20) SIN Rosetta: se avisa ANTES de lanzar ffmpeg, con dos salidas', () => {
   const msg = videoEngineProblem({ platform: 'darwin', arch: 'arm64', release: '20.6.0', canUseRosetta: false });
@@ -58,31 +58,7 @@ test('COMPACTA_FFMPEG_PATH manda sobre todo lo demas', () => {
   }
 });
 
-// ---- Mac: un solo instalador (Intel + Apple Silicon) y el ffmpeg "fat" que lleva dentro ----
-
-/** Cabecera de un Mach-O "fat" como la que deja `lipo`: 0xCAFEBABE, n, y n entradas de 20 bytes (todo big-endian). */
-function fatHeader(cpuTypes) {
-  const buf = Buffer.alloc(8 + cpuTypes.length * 20);
-  buf.writeUInt32BE(0xcafebabe, 0);
-  buf.writeUInt32BE(cpuTypes.length, 4);
-  cpuTypes.forEach((cpu, i) => buf.writeUInt32BE(cpu, 8 + i * 20));
-  return buf;
-}
-const X64 = 0x01000007;
-const ARM64 = 0x0100000c;
-
-test('machoArchitectures lee las arquitecturas de un binario fat, de uno normal y de lo que no es Mach-O', () => {
-  assert.deepEqual(machoArchitectures(fatHeader([X64, ARM64])), ['x64', 'arm64']);
-  assert.deepEqual(machoArchitectures(fatHeader([ARM64])), ['arm64']);
-  const thin = Buffer.alloc(32);
-  thin.writeUInt32LE(0xfeedfacf, 0);
-  thin.writeUInt32LE(X64, 4);
-  assert.deepEqual(machoArchitectures(thin), ['x64'], 'Mach-O de una sola arquitectura (little-endian)');
-  assert.deepEqual(machoArchitectures(Buffer.from('#!/bin/sh\necho hola\n')), []);
-  assert.deepEqual(machoArchitectures(Buffer.alloc(3)), []);
-  assert.deepEqual(machoArchitectures(null), []);
-  assert.deepEqual(machoArchitectures(fatHeader([0x12345678])), [], 'una CPU desconocida no se cuenta');
-});
+// ---- Mac: Rosetta para el ffmpeg en un Apple Silicon con macOS 11 (la lectura de cabeceras esta en macho.test.js) ----
 
 test('needsRosetta: solo Apple Silicon con macOS anterior a 12; una version ilegible no lo activa', () => {
   assert.equal(needsRosetta({ platform: 'darwin', arch: 'arm64', release: '20.6.0' }), true);

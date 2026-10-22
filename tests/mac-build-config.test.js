@@ -136,13 +136,11 @@ test('el .dmg se pide en HFS+ de forma explicita y las librerias de sharp se dec
 });
 
 test('los flujos de GitHub usan acciones que corren sobre Node 24 (las anteriores dan el aviso «Node.js 20 is deprecated»)', () => {
-  for (const file of ['build.yml', 'test-mac.yml']) {
-    const text = fs.readFileSync(path.join(ROOT, '.github', 'workflows', file), 'utf8');
-    for (const [, name, major] of text.matchAll(/uses:\s*(actions\/[a-z-]+)@v(\d+)/g)) {
-      assert.ok(Number(major) >= 6, `${file}: ${name}@v${major} corre sobre Node 20`);
-    }
-    assert.doesNotMatch(text, /softprops\/action-gh-release@v[12]\b/);
+  const text = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
+  for (const [, name, major] of text.matchAll(/uses:\s*(actions\/[a-z-]+)@v(\d+)/g)) {
+    assert.ok(Number(major) >= 6, `${name}@v${major} corre sobre Node 20`);
   }
+  assert.doesNotMatch(text, /softprops\/action-gh-release@v[12]\b/);
 });
 
 test('los avisos de permisos de macOS (Documentos, Escritorio, Descargas, discos externos y de red) existen y estan en los 6 idiomas', () => {
@@ -167,4 +165,11 @@ test('el flujo de GitHub construye, prueba y publica LAS DOS variantes de Mac (m
   assert.match(workflow, /os: \[macos-latest, macos-15-intel\]/, 'en Apple Silicon y en Intel, con ejes limpios (4 pruebas)');
   assert.match(workflow, /'13\.0\.0' \|\| '10\.13\.0'/, 'el minimo de macOS esperado de cada una');
   assert.match(workflow, /pattern: Compacta-\*/, 'el Release lleva las dos y la de Windows');
+});
+
+test('el flujo de GitHub tambien ejecuta la herramienta propia sobre el .app (la contrasta con lipo en un Mac real) y el verificador del paquete', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
+  assert.match(workflow, /node scripts\/mac-app-tools\.js check "\$APP"/);
+  assert.match(workflow, /scripts\/verify-packaged-engine\.js/);
+  assert.ok(fs.existsSync(path.join(ROOT, 'scripts', 'mac-app-tools.js')) && fs.existsSync(path.join(ROOT, 'scripts', 'verify-packaged-engine.js')));
 });

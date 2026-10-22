@@ -13,6 +13,7 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const { track } = require('./child-processes');
+const { readMachoArchitectures } = require('../macho');
 
 /**
  * Donde esta el ffmpeg, por orden:
@@ -56,49 +57,6 @@ function getFfmpegPath() {
   }
   if (!cachedFfmpegPath) throw new Error(t('engine.missing'));
   return cachedFfmpegPath;
-}
-
-/**
- * Arquitecturas que lleva un ejecutable de macOS (Mach-O), leyendo solo su cabecera. Un binario "fat" (el que
- * deja `lipo` al juntar Intel y Apple Silicon) las lista todas; uno normal lleva una sola. Devuelve un array de
- * 'x64' / 'arm64' (vacio si no es un Mach-O o no se puede leer). Funcion pura sobre un Buffer: se prueba sin Mac.
- */
-function machoArchitectures(head) {
-  if (!head || head.length < 8) return [];
-  const CPU = { 0x01000007: 'x64', 0x0100000c: 'arm64' };
-  const magicBE = head.readUInt32BE(0);
-  if (magicBE === 0xcafebabe || magicBE === 0xcafebabf) { // fat (32 o 64 bits de desplazamiento); campos en big-endian
-    const count = head.readUInt32BE(4);
-    const entrySize = magicBE === 0xcafebabf ? 32 : 20;
-    const found = [];
-    for (let i = 0; i < Math.min(count, 8); i++) {
-      const offset = 8 + i * entrySize;
-      if (offset + 4 > head.length) break;
-      const arch = CPU[head.readUInt32BE(offset)];
-      if (arch) found.push(arch);
-    }
-    return found;
-  }
-  const magicLE = head.readUInt32LE(0);
-  if (magicLE === 0xfeedfacf) { // Mach-O de 64 bits, una sola arquitectura (cpu en little-endian)
-    const arch = CPU[head.readUInt32LE(4)];
-    return arch ? [arch] : [];
-  }
-  return [];
-}
-
-function readMachoArchitectures(file) {
-  let fd;
-  try {
-    fd = fs.openSync(file, 'r');
-    const head = Buffer.alloc(8 + 8 * 32);
-    const read = fs.readSync(fd, head, 0, head.length, 0);
-    return machoArchitectures(head.subarray(0, read));
-  } catch {
-    return [];
-  } finally {
-    if (fd !== undefined) fs.closeSync(fd);
-  }
 }
 
 /** Version de macOS a partir de la de Darwin (macOS 12 = Darwin 21). NaN si no se entiende. */
@@ -381,4 +339,4 @@ function captureFfmpeg(args) {
   });
 }
 
-module.exports = { getFfmpegPath, ffmpegLaunch, machoArchitectures, needsRosetta, videoEngineProblem, parseProbeOutput, probeVideo, runFfmpeg, listEncoders, captureFfmpeg };
+module.exports = { getFfmpegPath, ffmpegLaunch, needsRosetta, videoEngineProblem, parseProbeOutput, probeVideo, runFfmpeg, listEncoders, captureFfmpeg };

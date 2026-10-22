@@ -95,8 +95,6 @@
     'settings.audioFormat.label': `Audio format`,
     'settings.audioFormat.hint': `“Compatible” plays on any device. “Opus” is 35% smaller, but needs a modern player and does not keep the cover art. “FLAC” halves WAV and AIFF files, bit-for-bit identical; anything already lossy is saved as “Compatible”.`,
     'settings.audioFormat.compat': `Compatible`,
-    'settings.audioFormat.opus': `Opus`,
-    'settings.audioFormat.flac': `FLAC`,
     'settings.output.label': `Output folder`,
     'settings.output.hint': `Where processed files are saved. What was already in the previous folder is not moved.`,
     'settings.output.change': `Change…`,

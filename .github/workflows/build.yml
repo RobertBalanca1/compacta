@@ -57,10 +57,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Compilar el instalador universal (Intel + Apple Silicon)
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run ${{ matrix.script }} 2>&1 | tee build.log
+        run: npm run ${{ matrix.script }}
 
       - name: Comprobar que sale UN solo .dmg
         run: |
@@ -144,6 +141,9 @@ jobs:
           for f in "$APP"/Contents/Resources/*.lproj/InfoPlist.strings; do plutil -lint "$f"; n=$((n+1)); done
           [ "$n" = "6" ] || { echo "Se esperaban 6 InfoPlist.strings y hay $n"; exit 1; }
 
+      - name: Lo mismo con la herramienta propia del proyecto (contrasta su lector de cabeceras con `lipo` en un Mac real)
+        run: node scripts/mac-app-tools.js check "$APP"
+
       - name: Firma (sin ella Apple Silicon diria que la app esta «dañada»)
         run: |
           set -euo pipefail
@@ -206,10 +206,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Compilar el instalador de Windows
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run dist:win 2>&1 | tee build.log
+        run: npm run dist:win
 
       - name: Guardar el instalador
         uses: actions/upload-artifact@v7

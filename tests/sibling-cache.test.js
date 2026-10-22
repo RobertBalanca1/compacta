@@ -8,7 +8,7 @@ const path = require('path');
 const sharp = require('sharp');
 const { optimizeImage } = require('../src/main/processor/raster-optimizer');
 
-async function make(file, color) {
+async function make(file) {
   await sharp({ create: { width: 300, height: 200, channels: 3, noise: { type: 'gaussian', mean: 120, sigma: 40 } } })
     .jpeg({ quality: 98 }).toFile(file);
 }
