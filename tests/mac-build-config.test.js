@@ -152,3 +152,9 @@ test('el flujo de GitHub tambien ejecuta la herramienta propia sobre el .app (la
   assert.match(workflow, /scripts\/verify-packaged-engine\.js/);
   assert.ok(fs.existsSync(path.join(ROOT, 'scripts', 'mac-app-tools.js')) && fs.existsSync(path.join(ROOT, 'scripts', 'verify-packaged-engine.js')));
 });
+
+test('el flujo abre la app de prueba con --disable-gpu (el Mac Intel de GitHub es una VM sin GPU y Electron 44 no inicia la GPU en ella)', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
+  assert.match(workflow, /Contents\/MacOS\/Compacta" --disable-gpu/);
+  assert.doesNotMatch(workflow, /DIAGNOSTICO TEMPORAL|registro-ventana/, 'sin restos de diagnostico');
+});

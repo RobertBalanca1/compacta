@@ -162,33 +162,20 @@ jobs:
         run: |
           set -euo pipefail
           export COMPACTA_DEBUG=1 COMPACTA_SCREENSHOT="$RUNNER_TEMP/ventana.png"
-          "$APP/Contents/MacOS/Compacta" > "$RUNNER_TEMP/app.log" 2>&1 &
+          # --disable-gpu: el Mac Intel de GitHub es una maquina virtual SIN tarjeta grafica; sin esto Electron 44 no consigue iniciar la GPU
+          # (EGL) y la captura de la ventana nunca termina. En un Mac de verdad hay GPU. Es lo mismo que se hace en las pruebas de Linux.
+          "$APP/Contents/MacOS/Compacta" --disable-gpu > "$RUNNER_TEMP/app.log" 2>&1 &
           PID=$!
           for i in $(seq 1 90); do
             if grep -q "screenshot saved" "$RUNNER_TEMP/app.log" 2>/dev/null; then break; fi
             if ! kill -0 $PID 2>/dev/null; then break; fi
             sleep 1
           done
-          echo "segundos esperados: $i (maximo 90)" > "$RUNNER_TEMP/tiempo.txt"; kill -0 $PID 2>/dev/null && echo "la app seguia viva" >> "$RUNNER_TEMP/tiempo.txt" || echo "la app habia terminado" >> "$RUNNER_TEMP/tiempo.txt"
           kill $PID 2>/dev/null || true
           cat "$RUNNER_TEMP/app.log"
           grep -q "did-finish-load" "$RUNNER_TEMP/app.log" || { echo "La ventana no cargo"; exit 1; }
           grep -q "screenshot saved" "$RUNNER_TEMP/app.log" || { echo "No se pudo capturar la ventana"; exit 1; }
           if grep -qi "DEBUG-renderer-crash\|DEBUG-did-fail-load\|uncaughtException" "$RUNNER_TEMP/app.log"; then echo "Hubo errores al abrir"; exit 1; fi
-
-      - name: DIAGNOSTICO TEMPORAL - guardar el registro de la ventana en una rama
-        if: always()
-        continue-on-error: true
-        shell: bash
-        run: |
-          mkdir -p "$RUNNER_TEMP/ci"
-          { echo "== $(sw_vers -productVersion) $(uname -m) ${{ matrix.variante }}"; cat "$RUNNER_TEMP/tiempo.txt" 2>/dev/null; tail -n 120 "$RUNNER_TEMP/app.log" 2>/dev/null || echo "sin registro"; } > "$RUNNER_TEMP/ci/registro.txt"
-          cd "$RUNNER_TEMP/ci"
-          git init -q
-          git checkout -q -b "registro-ventana-${{ matrix.variante }}-${{ matrix.os }}"
-          git add .
-          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m registro
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "registro-ventana-${{ matrix.variante }}-${{ matrix.os }}" || true
 
       - name: Guardar la captura de la ventana (para mirarla)
         if: always()

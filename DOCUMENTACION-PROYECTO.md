@@ -1847,7 +1847,12 @@ En la 26, `sign()` hace `if (!identity) return false` ANTES de mirar `sign`: sin
 **Arreglo.** `build.mac.identity = "-"` + `build.mac.timestamp = "none"` (sin sello de hora de Apple, que necesita red) + `hardenedRuntime: false` (ya estaba). Se retira `scripts/mac-sign.js` y su prueba (código que la versión nueva hace innecesario);
 `tests/mac-build-config.test.js` vigila ahora `identity`, `timestamp`, `hardenedRuntime` y que no vuelva la función propia.
 **Lección.** La firma NO se puede probar desde Linux (`isSignAllowed()` es falso fuera de macOS): el paso «Firma» del flujo, en Macs reales, es la única comprobación, y detectó el fallo ANTES de publicar (el Release no se creó: depende de que las pruebas pasen).
-**Estado:** corregido en el código; su efecto se confirma en la siguiente ejecución del flujo (ver 13.1).
+**Estado:** corregido y CONFIRMADO en GitHub: tras el cambio, el paso «Firma» pasó en las 4 pruebas.
+
+**Segundo hallazgo de la misma ejecución: Electron 44 y el Mac Intel de GitHub.** Solo fallaba «Mac moderno en Intel», en «Abrir la app de verdad». Se leyó el registro con un paso temporal que lo guardaba en una rama (luego retirado): en esa máquina virtual (macOS 15.7.9, sin tarjeta gráfica) `Initialization of all (1) EGL display types failed` →
+`Exiting GPU process due to errors during initialization`; la página sí cargaba (`did-finish-load`) pero la captura (`UnknownVizError`) nunca terminaba. La misma app tardó 5 s en abrirse y capturar en Apple Silicon (macOS 26.6.2, con GPU virtual) y la variante antigua (Electron 26) pasa en la misma máquina Intel. Es una limitación del
+servidor de pruebas, no de un Mac real; el paso lanza ahora la app con `--disable-gpu` (como las pruebas de Linux). **Posible mejora, no hecha:** Chromium reciente ya no cae solo a SwiftShader; quien ejecute el Mac moderno en una máquina virtual sin aceleración gráfica podría ver la ventana sin dibujar
+(solución: `--disable-gpu` o `app.disableHardwareAcceleration()` automático ante la caída del proceso de GPU). La variante antigua no tiene ese problema.
 
 ## 8. Funciones agregadas sobre la marcha
 
