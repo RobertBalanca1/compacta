@@ -223,7 +223,7 @@ jobs:
     name: Publicar en Releases
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [verify-mac, build-win]
-    runs-on: ubuntu-24.04 # fijo: «ubuntu-latest» migra a Ubuntu 26 y GitHub avisa de ello en cada ejecucion
+    runs-on: ubuntu-24.04 # version fija: el alias «latest» de Ubuntu migra a la 26 y GitHub avisa de ello en cada ejecucion
     steps:
       - uses: actions/download-artifact@v8
         with:
