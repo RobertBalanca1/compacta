@@ -158,3 +158,9 @@ test('el flujo abre la app de prueba con --disable-gpu (el Mac Intel de GitHub e
   assert.match(workflow, /Contents\/MacOS\/Compacta" --disable-gpu/);
   assert.doesNotMatch(workflow, /DIAGNOSTICO TEMPORAL|registro-ventana/, 'sin restos de diagnostico');
 });
+
+test('el flujo no usa «-latest» de Ubuntu (GitHub avisa de su migracion en cada ejecucion): el trabajo de publicacion va fijado', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
+  assert.doesNotMatch(workflow, /ubuntu-latest/);
+  assert.match(workflow, /runs-on: ubuntu-24\.04/);
+});

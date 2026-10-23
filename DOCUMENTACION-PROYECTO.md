@@ -1734,7 +1734,7 @@ de `rimraf` solo cambiaba un aviso por otro). Son herramientas de CONSTRUCCIÓN,
    también reintenta sola si `hdiutil` falla de forma transitoria al montar/desmontar (los «failed to mount» ocasionales). El flujo sigue comprobando que el `.dmg` es HFS+.
 3. Acciones de GitHub a las versiones que corren sobre Node 24 (`checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `download-artifact@v8`, `action-gh-release@v3`): las anteriores generaban
    el aviso amarillo «Node.js 20 is deprecated». Todas conservan las entradas que usamos (comprobado en sus `action.yml`). `npm ci --no-audit --no-fund` quita las líneas informativas.
-   El desmontaje del `.dmg` en el flujo reintenta con `-force`.
+   El desmontaje del `.dmg` en el flujo reintenta con `-force`. El trabajo de publicación va en `ubuntu-24.04` (no `ubuntu-latest`): GitHub avisa en cada ejecución de que ese alias migra a Ubuntu 26. El único aviso que queda en una ejecución en verde es el de GitHub sobre la cola de los Macs Apple Silicon, que no depende de nosotros.
 
 **Código:** sin APIs obsoletas (búsqueda estática y ejecución con `--trace-deprecation --pending-deprecation`: 0 avisos en Node 22, con Electron 44 ni con Electron 26). `scripts/audit-code.js`
 ya no avisa de funciones largas: `extractZip` (106 líneas) se dividió sacando `processEntry`, y `createDuplicateDetector` (91) sacando `compareWith`; sin cambiar su lógica (las pruebas de ZIP, importación y
