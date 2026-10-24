@@ -1,0 +1,39 @@
+name: DIAGNOSTICO TEMPORAL - pruebas intermitentes en Mac Intel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repetir:
+    runs-on: macos-15-intel
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - name: Pasar la bateria 5 veces seguidas
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5; do
+            node --test tests/*.test.js > "$RUNNER_TEMP/vuelta$i.log" 2>&1
+            echo "vuelta $i: salida=$? $(grep -E '^# (pass|fail)' "$RUNNER_TEMP/vuelta$i.log" | tr '\n' ' ')" >> "$RUNNER_TEMP/resumen.txt"
+          done
+          cat "$RUNNER_TEMP/resumen.txt"
+      - name: Guardar el detalle en una rama
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci"
+          { cat "$RUNNER_TEMP/resumen.txt"; for i in 1 2 3 4 5; do f="$RUNNER_TEMP/vuelta$i.log"; if grep -q "^not ok" "$f" 2>/dev/null; then echo; echo "===== VUELTA $i: pruebas que fallan"; grep -n -B1 -A45 "^not ok" "$f" | head -200; fi; done; } > "$RUNNER_TEMP/ci/registro.txt"
+          cd "$RUNNER_TEMP/ci"
+          git init -q
+          git checkout -q -b registro-intermitentes
+          git add .
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m registro
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" registro-intermitentes || true
