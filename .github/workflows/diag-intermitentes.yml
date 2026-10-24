@@ -19,18 +19,22 @@ jobs:
       - name: Pasar la bateria 5 veces seguidas
         shell: bash
         run: |
+          set +e
           for i in 1 2 3 4 5; do
             node --test tests/*.test.js > "$RUNNER_TEMP/vuelta$i.log" 2>&1
-            echo "vuelta $i: salida=$? $(grep -E '^# (pass|fail)' "$RUNNER_TEMP/vuelta$i.log" | tr '\n' ' ')" >> "$RUNNER_TEMP/resumen.txt"
+            code=$?
+            echo "vuelta $i: salida=$code $(grep -E '^# (pass|fail)' "$RUNNER_TEMP/vuelta$i.log" | tr '\n' ' ')" >> "$RUNNER_TEMP/resumen.txt"
           done
           cat "$RUNNER_TEMP/resumen.txt"
+          exit 0
       - name: Guardar el detalle en una rama
         if: always()
         continue-on-error: true
         shell: bash
         run: |
+          set +e
           mkdir -p "$RUNNER_TEMP/ci"
-          { cat "$RUNNER_TEMP/resumen.txt"; for i in 1 2 3 4 5; do f="$RUNNER_TEMP/vuelta$i.log"; if grep -q "^not ok" "$f" 2>/dev/null; then echo; echo "===== VUELTA $i: pruebas que fallan"; grep -n -B1 -A45 "^not ok" "$f" | head -200; fi; done; } > "$RUNNER_TEMP/ci/registro.txt"
+          { cat "$RUNNER_TEMP/resumen.txt" 2>/dev/null; for i in 1 2 3 4 5; do f="$RUNNER_TEMP/vuelta$i.log"; if grep -q "^not ok" "$f" 2>/dev/null; then echo; echo "===== VUELTA $i: pruebas que fallan"; grep -n -B1 -A45 "^not ok" "$f" | head -200; fi; done; } > "$RUNNER_TEMP/ci/registro.txt"
           cd "$RUNNER_TEMP/ci"
           git init -q
           git checkout -q -b registro-intermitentes
