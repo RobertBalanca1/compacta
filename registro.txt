@@ -1,0 +1,5 @@
+vuelta 1: salida=0 # pass 438 # fail 0 
+vuelta 2: salida=0 # pass 438 # fail 0 
+vuelta 3: salida=0 # pass 438 # fail 0 
+vuelta 4: salida=0 # pass 438 # fail 0 
+vuelta 5: salida=0 # pass 438 # fail 0 
