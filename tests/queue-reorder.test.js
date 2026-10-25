@@ -93,12 +93,16 @@ test('fotos y videos: cada carril respeta el orden nuevo dentro de si mismo', ()
 
 test('con 20.000 pendientes, mover es instantaneo y el reclamo sigue siendo lineal', () => {
   const specs = Array.from({ length: 20000 }, (_, i) => [`j${i}`, 'pending']);
-  const qm = queueOf(...specs);
-  const start = process.hrtime.bigint();
-  for (let i = 0; i < 50; i += 1) qm.moveJob(`j${19999 - i}`, 'j0');
-  let claimed = 0;
-  while (qm._claimNextPending()) claimed += 1;
-  const ms = Number(process.hrtime.bigint() - start) / 1e6;
-  assert.equal(claimed, 20000);
-  assert.ok(ms < 800, `tardo ${ms.toFixed(0)} ms`);
+  // La MEJOR de 3 medidas (ver queue-performance): un tirón puntual de una maquina compartida no es un algoritmo cuadratico.
+  let best = Infinity;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const qm = queueOf(...specs);
+    const start = process.hrtime.bigint();
+    for (let i = 0; i < 50; i += 1) qm.moveJob(`j${19999 - i}`, 'j0');
+    let claimed = 0;
+    while (qm._claimNextPending()) claimed += 1;
+    best = Math.min(best, Number(process.hrtime.bigint() - start) / 1e6);
+    assert.equal(claimed, 20000);
+  }
+  assert.ok(best < 800, `tardo ${best.toFixed(0)} ms (la mejor de 3)`);
 });

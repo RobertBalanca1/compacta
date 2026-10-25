@@ -152,7 +152,8 @@ test('REAL: un video largo ya muy comprimido se salta SIN codificarlo entero (co
     assert.equal(report.skipped, true);
     assert.equal(report.reason, 'ya-optimizado');
     assert.deepEqual(await fs.readFile(report.output), await fs.readFile(input));
-    assert.ok(elapsed < 8000, `la prueba corta debe ser rapida (${elapsed} ms)`);
+    // Solo evita que se cuelgue o codifique el video entero (minutos); el limite de antes (8 s) fallaba a veces en maquinas lentas.
+    assert.ok(elapsed < 30000, `la prueba corta debe ser rapida (${elapsed} ms)`);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }

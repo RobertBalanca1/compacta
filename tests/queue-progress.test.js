@@ -47,7 +47,9 @@ test('los tamanos se leen en segundo plano y coinciden con los archivos', async 
   const qm = new QueueManager();
   qm.paused = true; // sin procesar: solo se mira la lectura de tamanos
   qm.addJobs(pairs);
-  await new Promise((r) => setTimeout(r, 200));
+  // Se ESPERA a que la lectura termine (en una maquina lenta o con la CPU repartida, un tiempo fijo de 200 ms a veces no bastaba).
+  const deadline = Date.now() + 10000;
+  while (qm.jobs.some((job) => job.size === null) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
   for (const job of qm.jobs) assert.equal(job.size, (await fs.stat(job.inputPath)).size);
   await fs.rm(dir, { recursive: true, force: true });
 });

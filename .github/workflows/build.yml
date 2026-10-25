@@ -187,25 +187,9 @@ jobs:
 
       - name: Pruebas del proyecto en este Mac
         if: matrix.variante == 'moderno'
-        shell: bash
         run: |
-          set -o pipefail
           npm ci --no-audit --no-fund
-          npm test 2>&1 | tee "$RUNNER_TEMP/test.log"
-
-      - name: DIAG-PRUEBAS (temporal) guardar en una rama que prueba falla
-        if: failure() && matrix.variante == 'moderno'
-        continue-on-error: true
-        shell: bash
-        run: |
-          mkdir -p "$RUNNER_TEMP/ci"
-          { echo "== $(sw_vers -productVersion) $(uname -m)"; grep -E "^# (tests|pass|fail|skipped)" "$RUNNER_TEMP/test.log"; echo; grep -n -B1 -A45 "^not ok" "$RUNNER_TEMP/test.log" | head -300; } > "$RUNNER_TEMP/ci/registro.txt"
-          cd "$RUNNER_TEMP/ci"
-          git init -q
-          git checkout -q -b "registro-pruebas-${{ matrix.os }}"
-          git add .
-          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m registro
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "registro-pruebas-${{ matrix.os }}" || true
+          npm test
 
   # ------------------------------------------------------------------ 3. El instalador de Windows
   build-win:

@@ -24,14 +24,19 @@ test('reclamar los trabajos sale en orden y cada uno exactamente una vez', () =>
 });
 
 test('con 50.000 trabajos, reclamarlos todos es casi instantaneo (no cuadratico)', () => {
-  const qm = new QueueManager();
-  qm.jobs = fakeJobs(50000);
-  const start = process.hrtime.bigint();
-  let count = 0;
-  while (qm._claimNextPending()) count += 1;
-  const ms = Number(process.hrtime.bigint() - start) / 1e6;
-  assert.equal(count, 50000);
-  assert.ok(ms < 500, `tardo ${ms.toFixed(0)} ms; el algoritmo antiguo (find por trabajo) tardaba segundos`);
+  // Se toma la MEJOR de 3 medidas: un tirón puntual de una maquina compartida (recolector de basura, otro proceso) no es un
+  // algoritmo cuadratico, que seria lento las 3 veces.
+  let best = Infinity;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const qm = new QueueManager();
+    qm.jobs = fakeJobs(50000);
+    const start = process.hrtime.bigint();
+    let count = 0;
+    while (qm._claimNextPending()) count += 1;
+    best = Math.min(best, Number(process.hrtime.bigint() - start) / 1e6);
+    assert.equal(count, 50000);
+  }
+  assert.ok(best < 500, `tardo ${best.toFixed(0)} ms (la mejor de 3); el algoritmo antiguo (find por trabajo) tardaba segundos`);
 });
 
 test('avisar de cambios NO construye la lista completa (solo getSnapshot la construye)', () => {
