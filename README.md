@@ -117,7 +117,8 @@ cargados directamente por Electron.
 
 ## Desarrollo
 
-Requiere [Node.js](https://nodejs.org) 18 o superior.
+Requiere [Node.js](https://nodejs.org) 22.12 o superior (el mismo que usa el flujo de GitHub; lo piden Electron 44 y `sharp` 0.35).
+Electron 44 ya no descarga su binario al instalar: lo hace solo la primera vez que se ejecuta (`npm start`, `npm run dev` o las pruebas de interfaz), asi que esa primera vez hace falta internet.
 
 ```bash
 npm install

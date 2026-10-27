@@ -1857,6 +1857,15 @@ Se revisaron las pruebas con tiempos fijos y se endurecieron las sospechosas, SI
 **Posible mejora, no hecha:** Chromium reciente ya no cae solo a SwiftShader; quien ejecute el Mac moderno en una máquina virtual sin aceleración gráfica podría ver la ventana sin dibujar
 (solución: `--disable-gpu` o `app.disableHardwareAcceleration()` automático ante la caída del proceso de GPU). La variante antigua no tiene ese problema.
 
+### 7.28 — Verificación sobre el CLON de GitHub (no sobre la copia local) y últimos ajustes de 1.2.2
+
+**Método.** Se clonó el repositorio público desde cero (etiqueta `v1.2.2`, commit `e4aa359`), se comprobó que era idéntico a la copia de trabajo y al zip entregado, y se instaló y probó allí: `npm ci` limpio; `npm test` con Node 22 + `sharp` 0.35.5 (475 pruebas, 464 pasan, 11 omitidas por falta de `rar`, 0 fallan, 0 avisos de Node);
+interfaz 47/47 y idiomas 17/17 con Electron 44; auditoría de código limpia; y la pareja antigua (`sharp` 0.33.5 + el Node 18.16 de Electron 26): 464 pasan, 0 fallan. Además se descargaron los TRES archivos publicados en Releases y se revisaron por dentro:
+los dos `.dmg` son HFS+, universales, declaran macOS 13.0.0 y 10.13.0, llevan los 6 textos de permisos y su `src/` es idéntico al del repositorio (`mac-app-tools check` en las dos: «Todo en regla»); el `.exe` lleva Electron 44.9.1, solo `sharp-win32-x64`, 1.2.2, y su `src/` es idéntico al del repositorio salvo los finales de línea.
+**Hallazgos y arreglos.** (1) El paquete de Windows llevaba el código con finales de línea CRLF (el servidor Windows de GitHub baja el código con `autocrlf`): sin efecto en el funcionamiento, pero archivos distintos en bytes a los de Mac; ahora `.gitattributes` fija LF. (2) El README decía «Node.js 18 o superior»: con Electron 44 y `sharp` 0.35 hace falta Node 22.12
+(el del flujo); `package.json` declara `engines.node` y `tests/repo-hygiene.test.js` vigila que `package.json`, el README y el flujo no se desincronicen (y que no haya CRLF en el código). (3) Electron 44 ya no descarga su binario al instalar (no tiene `postinstall`): lo baja la primera vez que se ejecuta; el README lo dice.
+**Código ineficiente: nada que arreglar.** Llamadas síncronas en `src/main` solo en arranque, salida y ajustes pequeños (el manifiesto se escribe en segundo plano con retardo de 400 ms y solo en síncrono al salir); los 44 `await` dentro de bucles son lecturas secuenciales deliberadas (importador, comprimidos, duplicados) para no saturar el disco.
+
 ## 8. Funciones agregadas sobre la marcha
 
 - **Concurrencia segura**: procesamiento en paralelo (1 a 4 imágenes a la

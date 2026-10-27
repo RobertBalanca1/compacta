@@ -1,0 +1,6 @@
+# Finales de linea: siempre LF en el repositorio y en las copias de trabajo, tambien en Windows. Sin esto, el servidor de
+# Windows de GitHub baja el codigo con CRLF y el paquete de Windows lleva archivos distintos (en bytes) a los de Mac y Linux.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
