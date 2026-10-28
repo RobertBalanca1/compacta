@@ -187,9 +187,26 @@ jobs:
 
       - name: Pruebas del proyecto en este Mac
         if: matrix.variante == 'moderno'
+        shell: bash
         run: |
+          set -o pipefail
+          ps -axo pid,pcpu,etime,comm | sort -k2 -nr | head -12 > "${RUNNER_TEMP}/procesos.txt"; uptime >> "${RUNNER_TEMP}/procesos.txt"
           npm ci --no-audit --no-fund
-          npm test
+          npm test 2>&1 | tee "${RUNNER_TEMP}/salida-pruebas.log"
+
+      - name: Captura temporal de fallos (se retira en cuanto se identifique la causa)
+        if: failure() && matrix.variante == 'moderno'
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/ci"
+          { echo "== $(sw_vers -productVersion) $(uname -m)"; echo "--- procesos al empezar las pruebas:"; cat "${RUNNER_TEMP}/procesos.txt"; grep -E "^# (tests|pass|fail|skipped)" "${RUNNER_TEMP}/salida-pruebas.log"; echo; grep -n -B1 -A45 "^not ok" "${RUNNER_TEMP}/salida-pruebas.log" | head -300; } > "${RUNNER_TEMP}/ci/captura.txt"
+          cd "${RUNNER_TEMP}/ci"
+          git init -q
+          git checkout -q -b "captura-pruebas-${{ matrix.os }}"
+          git add .
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m captura
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "captura-pruebas-${{ matrix.os }}" || true
 
   # ------------------------------------------------------------------ 3. El instalador de Windows
   build-win:
