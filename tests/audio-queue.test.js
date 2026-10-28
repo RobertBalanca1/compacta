@@ -195,6 +195,8 @@ test('con miles de archivos ya comprimidos, volver a soltarlos NO se cuelga (la 
   const took = Date.now() - started;
   assert.equal(second.duplicateBefore, N);
   assert.equal(second.importedFiles.length, 0);
-  assert.ok(took < 20000, `tardo ${took} ms`);
+  // Solo vigila que NO sea cuadratico: con 1500 archivos, un algoritmo cuadratico tardaria muchos minutos (millones de lecturas). El limite de
+  // antes (20 s) fallo en el Mac Intel de GitHub (22 s: disco virtual lento con la maquina cargada); aqui tarda unos segundos.
+  assert.ok(took < 90000, `tardo ${took} ms`);
   await fs.rm(src, { recursive: true, force: true });
 });

@@ -200,7 +200,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p "${RUNNER_TEMP}/ci"
-          { echo "== $(sw_vers -productVersion) $(uname -m)"; echo "--- procesos al empezar las pruebas:"; cat "${RUNNER_TEMP}/procesos.txt"; grep -E "^# (tests|pass|fail|skipped)" "${RUNNER_TEMP}/salida-pruebas.log"; echo; grep -n -B1 -A45 "^not ok" "${RUNNER_TEMP}/salida-pruebas.log" | head -300; } > "${RUNNER_TEMP}/ci/captura.txt"
+          { echo "== $(sw_vers -productVersion) $(uname -m)"; echo "--- procesos al empezar las pruebas:"; cat "${RUNNER_TEMP}/procesos.txt"; grep -E "^# (tests|pass|fail|skipped)" "${RUNNER_TEMP}/salida-pruebas.log"; echo; grep -n -B60 -A30 -E "^ *not ok" "${RUNNER_TEMP}/salida-pruebas.log" | head -450; } > "${RUNNER_TEMP}/ci/captura.txt"
           cd "${RUNNER_TEMP}/ci"
           git init -q
           git checkout -q -b "captura-pruebas-${{ matrix.os }}"
