@@ -156,7 +156,7 @@ test('el flujo de GitHub tambien ejecuta la herramienta propia sobre el .app (la
 test('el flujo abre la app de prueba con --disable-gpu (el Mac Intel de GitHub es una VM sin GPU y Electron 44 no inicia la GPU en ella)', () => {
   const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
   assert.match(workflow, /Contents\/MacOS\/Compacta" --disable-gpu/);
-  assert.doesNotMatch(workflow, /DIAGNOSTICO TEMPORAL|DIAG-PRUEBAS|registro-(ventana|pruebas)|tee "\$RUNNER_TEMP/, 'sin restos de diagnostico');
+  assert.doesNotMatch(workflow, /DIAGNOSTICO TEMPORAL|DIAG-PRUEBAS|registro-(ventana|pruebas)|Captura temporal|captura-(pruebas|intermitentes)|salida-pruebas|procesos\.txt|tee "/, 'sin restos de diagnostico');
 });
 
 test('el flujo no usa «-latest» de Ubuntu (GitHub avisa de su migracion en cada ejecucion): el trabajo de publicacion va fijado', () => {

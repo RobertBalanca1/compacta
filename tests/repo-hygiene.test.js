@@ -41,3 +41,7 @@ test('ningun archivo de codigo del repositorio lleva finales de linea de Windows
   visit(ROOT);
   assert.deepEqual(offenders, [], 'archivos con CRLF: normalizar a LF');
 });
+
+test('el repositorio tiene UN solo flujo de GitHub (los de diagnostico temporal se retiran al terminar)', () => {
+  assert.deepEqual(fs.readdirSync(path.join(ROOT, '.github', 'workflows')).sort(), ['build.yml']);
+});

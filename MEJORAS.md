@@ -281,7 +281,7 @@ Ya no está aplazado: se implementó y se verificó todo lo que se puede verific
       misma lista de Macs compatibles para Sierra (10.12) y High Sierra (10.13), así que todo Mac con 10.12 se actualiza gratis a 10.13.6. Soportar 10.12 de
       verdad exigiría un Electron ≤ 21, otro `sharp`/libvips y otro ffmpeg, todo sin parches de seguridad: no se recomienda. Si en la iglesia hay un Mac
       con 10.12 que no se deja actualizar, mirar 7.23 (el «unexpected error» del instalador tiene arreglo).
-- [ ] **Prueba intermitente en el Mac Intel de GitHub (visto una vez, no reproducido en 5 pasadas seguidas):** se endurecieron las pruebas con tiempos fijos (7.27), pero la causa NO está confirmada. Si `npm test` vuelve a fallar solo ahí, capturar el registro como indica 7.27.
+- [ ] **Pruebas intermitentes en los Macs de GitHub (7.27):** de 4 fallos en ~12 ejecuciones, uno era un límite de tiempo irreal (corregido) y otro, `archive-formats` cayéndose entero en Apple Silicon, sigue SIN causa conocida; 8 pasadas completas seguidas después, todas en verde. Si reaparece, capturar el registro completo (con sangría) como indica 7.27.
 - [ ] **Mac moderno en máquinas virtuales sin GPU:** Electron 44 no inicia la GPU y la ventana puede no dibujarse (visto en el Mac Intel de GitHub). Un Mac real tiene GPU; si algún día hace falta, desactivar la aceleración por hardware automáticamente cuando caiga el proceso de GPU (7.27).
 - [ ] Firma de Apple (Developer ID, 99 USD/año) y **notarización**: quitaría el aviso de «no verificada». Cómo activarla: 7.23, punto 3 («Firma ad-hoc»: qué
       cambiar si algún día hay certificado). Mientras tanto: ver `LEEME.txt` (en macOS 15 o posterior, Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente»).
